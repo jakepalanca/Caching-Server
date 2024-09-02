@@ -132,18 +132,18 @@ public class CryptoCacheApplication {
             String idsParam = ctx.queryParam("ids");
             String dataType = ctx.queryParam("data_type");
             Optional<String> timeInterval = Optional.ofNullable(ctx.queryParam("time_interval"));
-            String xHeightScreenParam = ctx.queryParam("x_height_screen");
-            String yWidthScreenParam = ctx.queryParam("y_width_screen");
+            String xHeightChartViewParam = ctx.queryParam("x_height_chart_view");
+            String yWidthChartViewParam = ctx.queryParam("y_width_chart_view");
 
-            if (!validateInputs(idsParam, dataType, timeInterval, xHeightScreenParam, yWidthScreenParam)) {
+            if (!validateInputs(idsParam, dataType, timeInterval, xHeightChartViewParam, yWidthChartViewParam)) {
                 ctx.status(400).result("Bad Request: Invalid input parameters.");
                 return;
             }
 
-            double xHeightScreenDouble = Double.parseDouble(xHeightScreenParam);
+            double xHeightScreenDouble = Double.parseDouble(xHeightChartViewParam);
             int xHeightScreen = (int) xHeightScreenDouble;
 
-            double yWidthScreenDouble = Double.parseDouble(yWidthScreenParam);
+            double yWidthScreenDouble = Double.parseDouble(yWidthChartViewParam);
             int yWidthScreen = (int) yWidthScreenDouble;
 
             List<String> coinIds = Arrays.asList(idsParam.split(","));

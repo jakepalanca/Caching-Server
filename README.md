@@ -92,13 +92,13 @@ Fetches a list of bubbles (coins) with data based on the specified parameters.
     - `30d`
     - `200d`
     - `1y`
-- **`x_height_chartview`**: Chart view height in pixels (required).
-- **`y_width_chartview`**: Chart view width in pixels (required).
+- **`x_height_chart_view`**: Chart view height in pixels (required).
+- **`y_width_chart_view`**: Chart view width in pixels (required).
 
 **Example Request:**
 
 ```http
-GET /bubbles/list?ids=bitcoin,ethereum&data_type=market_cap&x_height_chartview=1080&y_width_chartview=1920
+GET /bubbles/list?ids=bitcoin,ethereum&data_type=market_cap&x_height_chart_view=1080&y_width_chart_view=1920
 ```
 
 ### GET /coins
