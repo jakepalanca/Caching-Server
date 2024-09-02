@@ -1,0 +1,73 @@
+name: Deploy Java Application to EC2
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        run: |
+          echo "${{ secrets.INSTANCE_SSH }}" > /tmp/instance_ssh.pem
+          chmod 600 /tmp/instance_ssh.pem
+
+      - name: SSH into EC2 instance and deploy application
+        run: |
+          ssh -i /tmp/instance_ssh.pem -o StrictHostKeyChecking=no ec2-user@ec2-18-206-246-58.compute-1.amazonaws.com << 'EOF'
+          
+            # Ensure Git is installed
+            if ! command -v git &> /dev/null
+            then
+                echo "Git could not be found, installing..."
+                sudo yum install git -y
+            fi
+          
+            # Navigate to home directory
+            cd /home/ec2-user
+          
+            # Clone the repository or pull the latest changes
+            if [ -d "CryptoCacheAPI" ]; then
+              cd CryptoCacheAPI
+              git pull origin master
+            else
+              git clone https://github.com/jakepalanca/CryptoCacheAPI.git
+              cd CryptoCacheAPI
+            fi
+          
+            # Clean previous build artifacts and stale test classes
+            mvn clean
+            rm -rf target/
+          
+            # Ensure Maven is installed and build the project with tests
+            mvn install
+          
+            # Generate Javadoc documentation
+            mvn javadoc:javadoc
+
+            # Check for running application on port 8080 and stop it if necessary
+            if lsof -Pi :8080 -sTCP:LISTEN -t >/dev/null ; then
+              echo "Stopping existing application on port 8080..."
+              sudo fuser -k 8080/tcp
+            fi
+          
+            # Run the application using Maven exec:java in the background, ensuring Javalin runs on port 8080
+            nohup mvn exec:java -Dexec.mainClass="jakepalanca.bubble.crypto.cache.bubblecache.BubbleCryptoCacheApplication" > app.log 2>&1 &
+          
+            # Get the process ID of the last background command
+            APP_PID=$!
+            echo "Application started successfully with PID: $APP_PID on port 8080"
+            echo "Logs are available in /home/ec2-user/CryptoCacheAPI/app.log"
+
+            exit
+          EOF
+
+      - name: Clean up SSH key
+        run: |
+          rm -f /tmp/instance_ssh.pem
