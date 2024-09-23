@@ -1,6 +1,6 @@
-# CryptoCacheAPI
+# Caching Server
 
-CryptoCacheAPI is a Javalin-based API that caches cryptocurrency data from the CoinGecko API and provides endpoints for fetching and searching this data. It supports various data types, such as market cap, volume, price change, rank, and more. The API also features Quartz-based scheduled tasks to keep the cached data up-to-date.
+This is a Javalin-based API that caches cryptocurrency data from the CoinGecko API and provides endpoints for fetching and searching this data. It supports various data types, such as market cap, volume, price change, rank, and more. The API also features Quartz-based scheduled tasks to keep the cached data up-to-date.
 
 ## Table of Contents
 
@@ -23,7 +23,6 @@ CryptoCacheAPI is a Javalin-based API that caches cryptocurrency data from the C
 - **Multiple Data Types**: Support for different data types like market cap, volume, price change, rank, etc.
 - **Bubbles Visualization**: Generate bubble chart data based on various criteria.
 - **Scheduled Updates**: Automatically update the cache every 15 seconds using Quartz scheduler.
-- **Basic Authentication**: Secure your API endpoints using Basic Authentication.
 
 ## Installation
 
@@ -37,8 +36,8 @@ CryptoCacheAPI is a Javalin-based API that caches cryptocurrency data from the C
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/jakepalanca/CryptoCacheAPI.git
-   cd CryptoCacheAPI
+   git clone https://github.com/jakepalanca/Caching-Server.git
+   cd Caching-Server
    ```
 
 2. Build the project using Maven:
@@ -50,7 +49,7 @@ CryptoCacheAPI is a Javalin-based API that caches cryptocurrency data from the C
 3. Run the application:
 
    ```bash
-   mvn exec:java -Dexec.mainClass="jakepalanca.cryptocache.javalin.CryptoCacheApplication"
+   mvn exec:java -Dexec.mainClass="jakepalanca.caching.server.CryptoCacheApplication"
    ```
 
 ## Environment Variables
@@ -140,7 +139,7 @@ GET /search?query=bitcoin
 To run the application on an EC2 instance or any server, you can use the following command:
 
 ```bash
-nohup mvn exec:java -Dexec.mainClass="jakepalanca.cryptocache.javalin.CryptoCacheApplication" > app.log 2>&1 &
+nohup mvn exec:java -Dexec.mainClass="jakepalanca.caching.server.CryptoCacheApplication" > app.log 2>&1 &
 ```
 
 This command starts the application in the background and logs the output to `app.log`.
@@ -155,16 +154,6 @@ mvn test
 
 The tests cover the core functionality of the `BubbleService`, `CoinGeckoClient`, and other key components. I am working on adding more coverage.
 
-## Javadocs
-
-The full API documentation for this project is available online. You can access the Javadocs at the following URL:
-
-[![Javadocs](https://img.shields.io/badge/Javadocs-Online-blue)](https://javadoc.jakepalanca.com/)
-
-This documentation provides detailed information about all classes, methods, and fields used in this project, including usage examples and descriptions.
-
-Visit the Javadocs here: [https://javadoc.jakepalanca.com/](https://javadoc.jakepalanca.com/)
-
 ## License
 
-This project is licensed under the GNU General Public License v3.0. See the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE.md) file for details.

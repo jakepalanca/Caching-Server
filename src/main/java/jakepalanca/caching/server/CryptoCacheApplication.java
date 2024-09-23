@@ -1,11 +1,10 @@
-package jakepalanca.cryptocache.javalin;
+package jakepalanca.caching.server;
 
 import io.javalin.Javalin;
 import io.javalin.json.JavalinJackson;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 
-import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -32,14 +31,6 @@ import static org.quartz.TriggerBuilder.newTrigger;
  */
 public class CryptoCacheApplication {
 
-    /**
-     * Constructs a new {@code CryptoCacheApplication} instance.
-     * This class serves as the entry point for the CryptoCache API server, setting up and configuring the necessary components.
-     */
-    public CryptoCacheApplication() {
-        // Default constructor
-    }
-
     private static final BubbleService bubbleService = new BubbleService(); // Initialize BubbleService
 
     /**
@@ -50,45 +41,12 @@ public class CryptoCacheApplication {
      */
     public static void main(String[] args) {
 
-        CoinCache coinCache = loadOrCreateCoinCache();
+        CoinCache coinCache = new CoinCache(false);
 
         Javalin app = createServer(coinCache);
         app.start("0.0.0.0", 8080); // Start the server on the default port
 
         scheduleCoinUpdateJob(coinCache);
-    }
-
-    /**
-     * Loads the {@link CoinCache} from a serialized file if it exists, or creates a new instance if it doesn't.
-     * If the cache is empty, it populates the cache with default test data.
-     *
-     * @return the loaded or newly created {@link CoinCache} instance
-     */
-    public static CoinCache loadOrCreateCoinCache() {
-        File cacheFile = new File("coinCache.ser");
-        CoinCache coinCache;
-
-        if (cacheFile.exists()) {
-            coinCache = new CoinCache(); // This constructor should handle loading from the .ser file
-            System.out.println("CoinCache loaded from serialized file.");
-        } else {
-            coinCache = new CoinCache(); // New instance if file doesn't exist
-            System.out.println("No serialized cache found. Starting with an empty CoinCache.");
-        }
-
-        // Ensure the cache is populated even if it's empty
-        if (coinCache.getAllCoins().isEmpty()) {
-            System.out.println("CoinCache is empty. Populating with default test data.");
-            List<Coin> defaultCoins = List.of(
-                    new Coin("bitcoin", "btc", "Bitcoin", "https://example.com/bitcoin.png", 50000.0, 1000000000L, 1, 1100000000L,
-                            500000000L, 55000.0, 45000.0, 500.0, 1.0, 0.5, 7.0, 10.0, 20.0, 15.0, 25.0, 50000000L, 1.0,
-                            20000000.0, 21000000.0, 21000000.0, 60000.0, -20.0, "2021-04-14", 3000.0, 1500.0, "2018-12-15",
-                            null, "2024-08-25T00:00:00Z")
-            );
-            coinCache.updateCache(defaultCoins);
-        }
-
-        return coinCache;
     }
 
     /**
@@ -113,14 +71,6 @@ public class CryptoCacheApplication {
         // Create and configure the Javalin server
         Javalin app = Javalin.create(config -> {
             config.jsonMapper(new JavalinJackson()); // Using Jackson for JSON serialization
-        });
-
-        // Set up before handler for basic authentication if needed (currently skipped for this implementation)
-        app.before(ctx -> {
-            // Always allow unauthenticated access to /health
-            if (ctx.path().equals("/health")) {
-                return;
-            }
         });
 
         app.get("/health", ctx -> {
@@ -149,7 +99,7 @@ public class CryptoCacheApplication {
             List<String> coinIds = Arrays.asList(idsParam.split(","));
             List<Coin> coins = coinCache.getCoinsByIds(coinIds);
 
-            List<Bubble> bubbles = bubbleService.createBubbles(coins, dataType, timeInterval, xHeightScreen, yWidthScreen);
+            List<Bubble> bubbles = bubbleService.createBubbles(coins, dataType, timeInterval.orElse(null), xHeightScreen, yWidthScreen);
 
             ctx.json(bubbles);
         });
@@ -213,7 +163,7 @@ public class CryptoCacheApplication {
                     .build();
 
             scheduler.scheduleJob(job, trigger);
-            System.out.println("CoinUpdateJob scheduled to run every 15 minutes.");
+            System.out.println("CoinUpdateJob scheduled to run every 15 seconds.");
         } catch (SchedulerException e) {
             System.err.println("Failed to schedule CoinUpdateJob: " + e.getMessage());
             e.printStackTrace();
@@ -236,16 +186,24 @@ public class CryptoCacheApplication {
     private static boolean validateInputs(String idsParam, String dataType, Optional<String> timeInterval, String xHeightScreenParam, String yWidthScreenParam) {
         if (idsParam == null || idsParam.isEmpty()) return false;
         if (dataType == null || dataType.isEmpty() || !BubbleService.VALID_DATA_TYPES.contains(dataType)) return false;
-        if (dataType.equals("price_change") && (!timeInterval.isPresent() || !BubbleService.VALID_TIME_INTERVALS.contains(timeInterval.get())))
+
+        if (dataType.equals("price_change")) {
+            if (!timeInterval.isPresent() || !BubbleService.VALID_TIME_INTERVALS.contains(timeInterval.get())) {
+                return false;
+            }
+        } else if (timeInterval.isPresent()) {
             return false;
-        if (timeInterval.isPresent() && !dataType.equals("price_change")) return false;
+        }
+
         if (xHeightScreenParam == null || yWidthScreenParam == null) return false;
+
         try {
             parseInt(xHeightScreenParam);
             parseInt(yWidthScreenParam);
         } catch (NumberFormatException e) {
             return false;
         }
+
         return true;
     }
 }
