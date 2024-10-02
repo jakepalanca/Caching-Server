@@ -55,12 +55,12 @@ jobs:
             fi
           
             # Run the application using Maven exec:java in the background, ensuring Javalin runs on port 8080
-            nohup mvn exec:java -Dexec.mainClass="jakepalanca.bubble.crypto.cache.bubblecache.BubbleCryptoCacheApplication" > app.log 2>&1 &
+            nohup mvn exec:java -Dexec.mainClass="jakepalanca.caching.server.CryptoCacheApplication" > app.log 2>&1 &
           
             # Get the process ID of the last background command
             APP_PID=$!
             echo "Application started successfully with PID: $APP_PID on port 8080"
-            echo "Logs are available in /home/ec2-user/CryptoCacheAPI/app.log"
+            echo "Logs are available in /home/ec2-user/Caching-Server/app.log"
 
             exit
           EOF
