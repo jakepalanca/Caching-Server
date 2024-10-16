@@ -1,7 +1,6 @@
 // ----- CoinGeckoClientTest.java -----
 package jakepalanca.caching.server;
 
-import org.apache.hc.core5.http.ParseException;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -21,10 +20,9 @@ public class CoinGeckoClientTest {
      * Tests that the fetchTopCoins method correctly retrieves and parses coins with all properties set.
      *
      * @throws IOException    if an I/O error occurs during the HTTP request
-     * @throws ParseException if an error occurs while parsing the response
      */
     @Test
-    public void testFetchTopCoinsWithCorrectProperties() throws IOException, ParseException, java.text.ParseException {
+    public void testFetchTopCoinsWithCorrectProperties() throws IOException, java.text.ParseException {
         // Mock the CoinGeckoClient
         CoinGeckoClient client = Mockito.mock(CoinGeckoClient.class);
 
