@@ -25,10 +25,15 @@ class CryptoCacheFunctionalTest {
 
     @BeforeEach
     public void setup() {
-        coinCache = new CoinCache(true);
+        // Define the directory where the cache will be stored
+        String cacheDirectory = "~/testing_cache/";
+
+        // Create a testing CoinCache instance
+        coinCache = new CoinCache(cacheDirectory, true); // Remove 'CoinCache' type to assign to the instance variable
         coinCache.emptyCacheFile(); // Ensure cache is clean before each test
         coinGeckoClient = Mockito.mock(CoinGeckoClient.class);
     }
+
 
     @AfterEach
     public void cleanup() throws IOException {

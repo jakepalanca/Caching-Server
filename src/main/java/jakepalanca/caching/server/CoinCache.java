@@ -1,6 +1,9 @@
+// ----- CoinCache.java -----
 package jakepalanca.caching.server;
 
 import org.apache.commons.text.similarity.LevenshteinDistance;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
@@ -16,7 +19,7 @@ import java.util.stream.Collectors;
  *
  * <p><strong>Usage Example:</strong></p>
  * <pre>{@code
- * CoinCache coinCache = new CoinCache();
+ * CoinCache coinCache = new CoinCache("./cache/", false); // Production cache
  * List<Coin> newCoins = fetchLatestCoins(); // Assume this method fetches the latest coins
  * coinCache.updateCache(newCoins);
  * List<Coin> topCoins = coinCache.getTop100Coins();
@@ -25,33 +28,50 @@ import java.util.stream.Collectors;
  */
 public class CoinCache implements Serializable {
 
+    private static final Logger logger = LoggerFactory.getLogger(CoinCache.class);
+
     @Serial
     private static final long serialVersionUID = 1L;
 
     /**
      * The thread-safe list that holds all cached {@link Coin} objects.
      */
-    final transient CopyOnWriteArrayList<Coin> coins = new CopyOnWriteArrayList<>();
+    final CopyOnWriteArrayList<Coin> coins = new CopyOnWriteArrayList<>();
 
     /**
      * The path to the cache file where the coin data is persisted.
-     * It differentiates between production and testing environments.
      */
-    private String cachePath;
+    private final String cachePath;
 
     /**
-     * Constructor for testing purposes. Initializes the CoinCache and loads existing cache data if available.
-     * The cache file is set to "coinCache-test.ser".
+     * Constructor for testing or production environments with a specified cache directory.
      *
-     * @param forTesting a boolean flag indicating that this instance is for testing
+     * @param cacheDir   the directory where the cache file will be stored
+     * @param forTesting a boolean flag indicating the environment:
+     *                   - {@code true} for testing (uses "coinCache-test.ser")
+     *                   - {@code false} for production (uses "coinCache-prod.ser")
      */
-    public CoinCache(boolean forTesting) {
-        loadCacheFromFile();
-        if (forTesting) {
-            this.cachePath = "coinCache-test.ser";
-        } else {
-            this.cachePath = "coinCache-prod.ser";
+    public CoinCache(String cacheDir, boolean forTesting) {
+        // Ensure the cache directory ends with a file separator
+        if (!cacheDir.endsWith(File.separator)) {
+            cacheDir += File.separator;
         }
+
+        String fileName = forTesting ? "coinCache-test.ser" : "coinCache-prod.ser";
+        this.cachePath = cacheDir + fileName;
+
+        // Ensure the cache directory exists
+        File dir = new File(cacheDir);
+        if (!dir.exists()) {
+            boolean created = dir.mkdirs();
+            if (created) {
+                logger.info("Cache directory created at: {}", cacheDir);
+            } else {
+                logger.error("Failed to create cache directory at: {}", cacheDir);
+            }
+        }
+
+        loadCacheFromFile();
     }
 
     /**
@@ -61,7 +81,7 @@ public class CoinCache implements Serializable {
      * @param newCoins the new list of coins to be added to the cache
      */
     public synchronized void updateCache(List<Coin> newCoins) {
-        System.out.println("Updating coin cache with new data...");
+        logger.info("Updating coin cache with new data...");
 
         // Create a map from coinId to Coin for quick lookup and to eliminate duplicates
         Map<String, Coin> newCoinMap = newCoins.stream()
@@ -82,42 +102,47 @@ public class CoinCache implements Serializable {
         // Persist the updated cache to the file
         saveCacheToFile();
 
-        System.out.println("Cache update complete. Total coins in cache: " + coins.size());
+        logger.info("Cache update complete. Total coins in cache: {}", coins.size());
     }
 
     /**
      * Saves the current coin cache to a file to persist the data across sessions.
-     * The file is named based on the environment (e.g., "coinCache-prod.ser" or "coinCache-test.ser")
-     * and is stored in the root directory.
+     * The file is stored in the specified cache directory.
      */
     private void saveCacheToFile() {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(cachePath))) {
             oos.writeObject(new ArrayList<>(coins));
-            System.out.println("Coin cache successfully saved to file: " + cachePath);
+            logger.info("Coin cache successfully saved to file: {}", cachePath);
         } catch (IOException e) {
-            System.err.println("Failed to save coin cache: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Failed to save coin cache to {}: {}", cachePath, e.getMessage(), e);
         }
     }
 
     /**
      * Loads the coin cache from a file if it exists. If the file is not found,
      * the cache is initialized as empty.
+     * If the cache file is corrupt, it is deleted and the cache is initialized as empty.
      */
     private void loadCacheFromFile() {
-        File file = new File(cachePath + "-prod.ser");
+        File file = new File(cachePath);
         if (file.exists()) {
             try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
                 List<Coin> loadedCoins = (List<Coin>) ois.readObject();
                 coins.clear();
                 coins.addAll(loadedCoins);
-                System.out.println("Coin cache successfully loaded from file: " + cachePath + "-prod.ser");
+                logger.info("Coin cache successfully loaded from file: {}", cachePath);
             } catch (IOException | ClassNotFoundException e) {
-                System.err.println("Failed to load coin cache: " + e.getMessage());
-                e.printStackTrace();
+                logger.error("Failed to load coin cache from {}: {}", cachePath, e.getMessage(), e);
+                // Attempt to delete the corrupt cache file
+                boolean deleted = file.delete();
+                if (deleted) {
+                    logger.warn("Corrupt cache file deleted: {}", cachePath);
+                } else {
+                    logger.warn("Failed to delete corrupt cache file: {}", cachePath);
+                }
             }
         } else {
-            System.out.println("Cache file not found (" + cachePath + "), starting with an empty cache.");
+            logger.info("Cache file not found ({}), starting with an empty cache.", cachePath);
         }
     }
 
@@ -197,20 +222,19 @@ public class CoinCache implements Serializable {
      * This is useful for resetting the cache during testing or maintenance.
      */
     public void emptyCacheFile() {
+        
         File file = new File(cachePath);
         if (file.exists()) {
             try {
                 // Open the file in write mode to truncate its contents
-                new FileWriter(file, false).close();
-                System.out.println("Cache file emptied successfully: " + cachePath);
+                new FileOutputStream(file, false).close();
+                logger.info("Cache file emptied successfully: {}", cachePath);
                 this.updateCache(new ArrayList<>());
             } catch (IOException e) {
-                System.err.println("Failed to empty cache file: " + cachePath);
-                e.printStackTrace();
+                logger.error("Failed to empty cache file: {}", cachePath, e);
             }
         } else {
-            System.out.println("No cache file found to empty: " + cachePath);
+            logger.info("No cache file found to empty: {}", cachePath);
         }
     }
-
 }

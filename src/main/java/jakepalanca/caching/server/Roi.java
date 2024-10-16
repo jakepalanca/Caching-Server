@@ -10,11 +10,7 @@ import java.io.Serializable;
  * Represents the Return on Investment (ROI) data for a coin.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Roi implements Serializable {
-
-    private final double times;
-    private final String currency;
-    private final double percentage;
+public record Roi(double times, String currency, double percentage) implements Serializable {
 
     public Roi(@JsonProperty("times") double times,
                @JsonProperty("currency") String currency,
@@ -24,18 +20,21 @@ public class Roi implements Serializable {
         this.percentage = percentage;
     }
 
+    @Override
     @JsonProperty("times")
-    public double getTimes() {
+    public double times() {
         return times;
     }
 
+    @Override
     @JsonProperty("currency")
-    public String getCurrency() {
+    public String currency() {
         return currency;
     }
 
+    @Override
     @JsonProperty("percentage")
-    public double getPercentage() {
+    public double percentage() {
         return percentage;
     }
 }

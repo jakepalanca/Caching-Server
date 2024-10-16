@@ -67,7 +67,7 @@ public class BubbleService {
             normalizedValues = distributeNormalizedValuesEvenly(coins.size());
         } else {
             normalizedValues = coins.stream()
-                    .map(coin -> normalizeValue(getValueForDataType(coin, dataType, timeInterval), minValue, maxValue, false))
+                    .map(coin -> normalizeValue(getValueForDataType(coin, dataType, timeInterval), minValue, maxValue))
                     .collect(Collectors.toList());
         }
 
@@ -91,7 +91,7 @@ public class BubbleService {
             bubble.setRadiusRatio(normalizedValue);
 
             // Assign color based on data type and value
-            bubble.setColor(getColorForCoin(coin, dataType, timeInterval, minValue, maxValue));
+            bubble.setColor(getColorForCoin(coin, dataType, timeInterval));
 
             bubbles.add(bubble);
         }
@@ -100,11 +100,10 @@ public class BubbleService {
         PackingResult<Packable> packingResult = Packing.packCircles(screenWidth, screenHeight, new ArrayList<>(bubbles), MAX_PACKING_ITERATIONS);
 
         // Extract packed bubbles with updated positions and radii
-        List<Bubble> packedBubbles = packingResult.getPackables().stream()
+
+        return packingResult.getPackables().stream()
                 .map(packable -> (Bubble) packable)
                 .collect(Collectors.toList());
-
-        return packedBubbles;
     }
 
     /**
@@ -128,12 +127,10 @@ public class BubbleService {
      * @param coin         the associated {@link Coin}
      * @param dataType     the data type used for bubble sizing
      * @param timeInterval the time interval if applicable
-     * @param minValue     the minimum value across all coins for the data type
-     * @param maxValue     the maximum value across all coins for the data type
      * @return             the color in HEX format
      */
-    private String getColorForCoin(Coin coin, String dataType, String timeInterval, double minValue, double maxValue) {
-        double value = getValueForDataType(coin, dataType, timeInterval);
+    private String getColorForCoin(Coin coin, String dataType, String timeInterval) {
+        getValueForDataType(coin, dataType, timeInterval);
 
         if (dataType.equals("price_change")) {
             // Use timeInterval to get the appropriate price change percentage
@@ -156,15 +153,14 @@ public class BubbleService {
     /**
      * Normalizes a value based on the provided min and max values.
      *
-     * @param value           the value to normalize
-     * @param minValue        the minimum value in the dataset
-     * @param maxValue        the maximum value in the dataset
-     * @param identicalValues flag indicating if all values are identical
-     * @return                the normalized value
+     * @param value    the value to normalize
+     * @param minValue the minimum value in the dataset
+     * @param maxValue the maximum value in the dataset
+     * @return the normalized value
      */
-    private double normalizeValue(double value, double minValue, double maxValue, boolean identicalValues) {
+    private double normalizeValue(double value, double minValue, double maxValue) {
         double epsilon = 1e-9; // Small constant to handle precision issues
-        if (identicalValues || Math.abs(maxValue - minValue) < epsilon) {
+        if (Math.abs(maxValue - minValue) < epsilon) {
             return DEFAULT_NORMALIZED_VALUE;
         }
 
@@ -221,23 +217,18 @@ public class BubbleService {
      * @return             the value corresponding to the data type
      */
     private double getValueForDataType(Coin coin, String dataType, String timeInterval) {
-        switch (dataType) {
-            case "market_cap":
-                return coin.getMarketCap();
-            case "total_volume":
-                return coin.getTotalVolume();
-            case "price_change":
-                return getPriceChangeForInterval(coin, timeInterval);
-            case "rank":
-                return coin.getMarketCapRank();
-            case "market_cap_change_percentage_24hr":
-                return coin.getMarketCapChangePercentage24h();
-            case "total_supply":
-                return coin.getTotalSupply();
-            default:
+        return switch (dataType) {
+            case "market_cap" -> coin.getMarketCap();
+            case "total_volume" -> coin.getTotalVolume();
+            case "price_change" -> getPriceChangeForInterval(coin, timeInterval);
+            case "rank" -> coin.getMarketCapRank();
+            case "market_cap_change_percentage_24hr" -> coin.getMarketCapChangePercentage24h();
+            case "total_supply" -> coin.getTotalSupply();
+            default -> {
                 logger.warn("Unsupported data type: {}", dataType);
-                return 0;
-        }
+                yield 0;
+            }
+        };
     }
 
     /**
@@ -249,25 +240,19 @@ public class BubbleService {
      */
     private double getPriceChangeForInterval(Coin coin, String timeInterval) {
         if (timeInterval == null) return 0;
-        switch (timeInterval) {
-            case "1h":
-                return coin.getPriceChangePercentage1h();
-            case "24h":
-                return coin.getPriceChangePercentage24h();
-            case "7d":
-                return coin.getPriceChangePercentage7d();
-            case "14d":
-                return coin.getPriceChangePercentage14d();
-            case "30d":
-                return coin.getPriceChangePercentage30d();
-            case "200d":
-                return coin.getPriceChangePercentage200d();
-            case "1y":
-                return coin.getPriceChangePercentage1y();
-            default:
+        return switch (timeInterval) {
+            case "1h" -> coin.getPriceChangePercentage1h();
+            case "24h" -> coin.getPriceChangePercentage24h();
+            case "7d" -> coin.getPriceChangePercentage7d();
+            case "14d" -> coin.getPriceChangePercentage14d();
+            case "30d" -> coin.getPriceChangePercentage30d();
+            case "200d" -> coin.getPriceChangePercentage200d();
+            case "1y" -> coin.getPriceChangePercentage1y();
+            default -> {
                 logger.warn("Unsupported time interval: {}", timeInterval);
-                return 0;
-        }
+                yield 0;
+            }
+        };
     }
 
     /**

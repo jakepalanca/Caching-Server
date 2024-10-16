@@ -1,109 +1,138 @@
 // ----- CoinGeckoClient.java -----
 package jakepalanca.caching.server;
 
+// Imports...
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.hc.client5.http.HttpHostConnectException;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.hc.core5.util.Timeout;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.Duration;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The {@code CoinGeckoClient} class provides methods to fetch cryptocurrency data from the CoinGecko API.
- * This client supports both demo and pro modes, controlled via environment variables.
+ * The {@code CoinGeckoClient} class provides methods to interact with the CoinGecko API.
+ * It fetches cryptocurrency data, handling batching and rate limits.
  *
- * <p>The client retrieves data in batches of 250 coins, with a delay between requests to avoid rate limits.</p>
- *
- * <p><strong>Environment Variables:</strong></p>
- * <ul>
- * <li>{@code COINGECKO_API_KEY} - The API key for accessing CoinGecko's API (used in demo mode).</li>
- * <li>{@code DEMO_MODE} - A boolean flag indicating whether to use the demo API or the pro API.</li>
- * <li>{@code COINGECKO_REQUEST_DELAY_MS} - The delay between requests in milliseconds.</li>
- * </ul>
+ * <p>This client supports fetching the top coins by market capitalization and fetching coins by a list of IDs.
+ * It handles batching of requests and introduces delays between batches to comply with API rate limits.</p>
  */
 public class CoinGeckoClient {
 
     private static final Logger logger = LoggerFactory.getLogger(CoinGeckoClient.class);
 
-    private static final String DEMO_API_URL = System.getenv().getOrDefault("COINGECKO_DEMO_API_URL", "https://api.coingecko.com/api/v3/coins/markets");
-    private static final String PRO_API_URL = System.getenv().getOrDefault("COINGECKO_PRO_API_URL", "https://pro-api.coingecko.com/api/v3/coins/markets");
-    private static final String PARAMETERS = System.getenv().getOrDefault("COINGECKO_API_PARAMETERS", "?vs_currency=usd&order=market_cap_desc&per_page=250&sparkline=false&price_change_percentage=1h%2C24h%2C7d%2C14d%2C30d%2C200d%2C1y&locale=en&precision=full");
-    private static final int REQUEST_DELAY_MS = Integer.parseInt(System.getenv().getOrDefault("COINGECKO_REQUEST_DELAY_MS", "15000"));
-
-    // Retrieve the API key and demo mode flag from environment variables
-    private static final String API_KEY = System.getenv("COINGECKO_API_KEY");
-    private static final boolean DEMO_MODE = Boolean.parseBoolean(System.getenv().getOrDefault("DEMO_MODE", "true"));
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private final CloseableHttpClient client;
+    private static final String BASE_URL = "https://api.coingecko.com/api/v3";
+    private static final String COINS_MARKETS_ENDPOINT = "/coins/markets";
+    private static final String PARAMETERS = "?vs_currency=usd&order=market_cap_desc&per_page=250&sparkline=false" +
+            "&price_change_percentage=1h,24h,7d,14d,30d,200d,1y&locale=en&precision=full";
 
     /**
-     * Constructs a new {@code CoinGeckoClient} instance.
-     * This client is used to interact with the CoinGecko API to fetch cryptocurrency data.
+     * Delay between API requests in milliseconds to respect rate limits.
+     */
+    public static final int REQUEST_DELAY_MS = 15000;
+
+    private final CloseableHttpClient client;
+    private final ObjectMapper objectMapper;
+
+    /**
+     * Constructs a new {@code CoinGeckoClient} instance with default configurations.
      */
     public CoinGeckoClient() {
-        RequestConfig requestConfig = RequestConfig.custom()
-                .setResponseTimeout(Timeout.of(Duration.ofSeconds(30)))
-                .build();
-        this.client = HttpClients.custom()
-                .setDefaultRequestConfig(requestConfig)
-                .build();
+        this.client = HttpClients.createDefault();
+        this.objectMapper = new ObjectMapper();
     }
 
     /**
-     * Fetches the top coins from CoinGecko API in batches of 250 coins each.
-     * This method fetches a total of 1000 coins, divided into 4 batches, with a delay between each request.
+     * Fetches coins by a list of IDs in batches of 250, respecting the API rate limits.
      *
-     * @return a list of {@link Coin} objects representing the top coins
+     * @param coinIds the list of coin IDs to fetch
+     * @return a list of {@link Coin} objects
      * @throws IOException    if an I/O error occurs during the HTTP request
      * @throws ParseException if an error occurs while parsing the response
      */
-    public List<Coin> fetchTopCoins() throws IOException, ParseException {
+    public List<Coin> fetchCoinsByIds(List<String> coinIds) throws IOException, ParseException {
         List<Coin> allCoins = new ArrayList<>();
-        logger.info("Starting to fetch top coins from CoinGecko...");
+        int totalBatches = (int) Math.ceil((double) coinIds.size() / 250);
+        logger.info("Fetching coins by IDs in {} batches...", totalBatches);
 
-        for (int i = 1; i <= 4; i++) { // Loop to fetch batches of 250 coins each
-            String baseUrl = DEMO_MODE ? DEMO_API_URL : PRO_API_URL;
-            String url = baseUrl + PARAMETERS + "&page=" + i;
-            logger.info("Fetching batch {} from URL: {}", i, url);
+        for (int i = 0; i < totalBatches; i++) {
+            int fromIndex = i * 250;
+            int toIndex = Math.min(fromIndex + 250, coinIds.size());
+            List<String> batchIds = coinIds.subList(fromIndex, toIndex);
+
+            String idsParam = String.join(",", batchIds);
+            String url = BASE_URL + COINS_MARKETS_ENDPOINT + PARAMETERS + "&ids=" + idsParam;
+            int batchNumber = i + 1;
+            logger.info("Fetching batch {}/{} for IDs.", batchNumber, totalBatches);
+
+            List<Coin> batchCoins = fetchBatch(url, batchNumber);
+            allCoins.addAll(batchCoins);
+
+            // Sleep between batches to respect rate limits
+            if (i < totalBatches - 1) {
+                try {
+                    logger.info("Sleeping for {} ms before next batch...", REQUEST_DELAY_MS);
+                    Thread.sleep(REQUEST_DELAY_MS);
+                } catch (InterruptedException e) {
+                    logger.error("Sleep interrupted: {}", e.getMessage());
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Interrupted during batch fetching", e);
+                }
+            }
+        }
+
+        return allCoins;
+    }
+
+    /**
+     * Fetches a specified number of batches of top coins from CoinGecko API.
+     *
+     * @param numberOfBatches the number of 250-coin batches to fetch
+     * @return a list of {@link Coin} objects representing the fetched coins
+     * @throws IOException    if an I/O error occurs during the HTTP request
+     * @throws ParseException if an error occurs while parsing the response
+     */
+    public List<Coin> fetchTopCoins(int numberOfBatches) throws IOException, ParseException {
+        List<Coin> allCoins = new ArrayList<>();
+        logger.info("Fetching top coins in {} batches...", numberOfBatches);
+
+        for (int i = 1; i <= numberOfBatches; i++) {
+            String url = BASE_URL + COINS_MARKETS_ENDPOINT + PARAMETERS + "&page=" + i;
+            logger.info("Fetching top coins batch {}/{}.", i, numberOfBatches);
 
             List<Coin> batchCoins = fetchBatch(url, i);
             allCoins.addAll(batchCoins);
 
-            // Sleep for a constant interval between requests
-            try {
-                logger.info("Sleeping for {} milliseconds before fetching the next batch...", REQUEST_DELAY_MS);
-                Thread.sleep(REQUEST_DELAY_MS);
-            } catch (InterruptedException e) {
-                logger.error("Sleep interrupted: {}", e.getMessage());
-                Thread.currentThread().interrupt();
+            // Sleep between batches to respect rate limits
+            if (i < numberOfBatches) {
+                try {
+                    logger.info("Sleeping for {} ms before next batch...", REQUEST_DELAY_MS);
+                    Thread.sleep(REQUEST_DELAY_MS);
+                } catch (InterruptedException e) {
+                    logger.error("Sleep interrupted: {}", e.getMessage());
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Interrupted during top coins fetching", e);
+                }
             }
         }
 
-        logger.info("Finished fetching all coins.");
+        logger.info("Finished fetching top coins.");
         return allCoins;
     }
 
     private List<Coin> fetchBatch(String url, int batchNumber) throws IOException, ParseException {
         HttpGet request = new HttpGet(url);
         request.addHeader("accept", "application/json");
-
-        if (DEMO_MODE) {
-            // Add the API key header only in demo mode
-            request.addHeader("x-cg-demo-api-key", API_KEY);
-        }
 
         HttpClientResponseHandler<List<Coin>> responseHandler = getListHttpClientResponseHandler(batchNumber);
 
@@ -112,7 +141,40 @@ public class CoinGeckoClient {
         long retryDelay = 2000; // Initial retry delay in milliseconds
 
         while (true) {
-            return client.execute(request, responseHandler);
+            try {
+                return client.execute(request, responseHandler);
+            } catch (HttpHostConnectException e) {
+                // Handle connection refused exception
+                retryCount++;
+                logger.warn("Connection refused. Attempt {} failed for batch {}: {}", retryCount, batchNumber, e.getMessage());
+                if (retryCount >= maxRetries) {
+                    logger.error("Max retries reached for batch {}. Throwing exception.", batchNumber);
+                    throw e;
+                }
+                try {
+                    Thread.sleep(retryDelay);
+                } catch (InterruptedException ie) {
+                    logger.error("Sleep interrupted during retry: {}", ie.getMessage());
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Interrupted during retry", ie);
+                }
+                retryDelay *= 2; // Exponential backoff
+            } catch (IOException e) {
+                retryCount++;
+                logger.warn("Attempt {} failed for batch {}: {}", retryCount, batchNumber, e.getMessage());
+                if (retryCount >= maxRetries) {
+                    logger.error("Max retries reached for batch {}. Throwing exception.", batchNumber);
+                    throw e;
+                }
+                try {
+                    Thread.sleep(retryDelay);
+                } catch (InterruptedException ie) {
+                    logger.error("Sleep interrupted during retry: {}", ie.getMessage());
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Interrupted during retry", ie);
+                }
+                retryDelay *= 2; // Exponential backoff
+            }
         }
     }
 
@@ -129,7 +191,7 @@ public class CoinGeckoClient {
             int statusCode = response.getCode();
             if (statusCode == 200) {
                 String responseBody = EntityUtils.toString(response.getEntity());
-                logger.info("Successfully fetched batch {}", batchNumber);
+                logger.info("Successfully fetched batch {}.", batchNumber);
                 return parseCoins(responseBody);
             } else {
                 logger.error("Failed to fetch coins, HTTP Code: {}", statusCode);

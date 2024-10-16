@@ -4,6 +4,7 @@ package jakepalanca.caching.server;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 
@@ -22,6 +23,7 @@ import java.util.Objects;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Coin implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private String coinId;
@@ -386,8 +388,12 @@ public class Coin implements Serializable {
         this.lastUpdated = lastUpdated;
     }
 
-    // Override equals and hashCode for proper comparison
-
+    /**
+     * Overrides the {@code equals} method to compare coins based on their {@code coinId}.
+     *
+     * @param o the object to compare with
+     * @return {@code true} if the {@code coinId}s are equal; {@code false} otherwise
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -395,47 +401,16 @@ public class Coin implements Serializable {
 
         Coin coin = (Coin) o;
 
-        return Double.compare(coin.currentPrice, currentPrice) == 0 &&
-                marketCap == coin.marketCap &&
-                marketCapRank == coin.marketCapRank &&
-                Objects.equals(coinId, coin.coinId) &&
-                Objects.equals(symbol, coin.symbol) &&
-                Objects.equals(name, coin.name) &&
-                Objects.equals(image, coin.image) &&
-                Objects.equals(fullyDilutedValuation, coin.fullyDilutedValuation) &&
-                totalVolume == coin.totalVolume &&
-                Double.compare(coin.high24h, high24h) == 0 &&
-                Double.compare(coin.low24h, low24h) == 0 &&
-                Double.compare(coin.priceChange24h, priceChange24h) == 0 &&
-                Double.compare(coin.priceChangePercentage24h, priceChangePercentage24h) == 0 &&
-                Double.compare(coin.priceChangePercentage1h, priceChangePercentage1h) == 0 &&
-                Double.compare(coin.priceChangePercentage7d, priceChangePercentage7d) == 0 &&
-                Double.compare(coin.priceChangePercentage14d, priceChangePercentage14d) == 0 &&
-                Double.compare(coin.priceChangePercentage30d, priceChangePercentage30d) == 0 &&
-                Double.compare(coin.priceChangePercentage200d, priceChangePercentage200d) == 0 &&
-                Double.compare(coin.priceChangePercentage1y, priceChangePercentage1y) == 0 &&
-                marketCapChange24h == coin.marketCapChange24h &&
-                Double.compare(coin.marketCapChangePercentage24h, marketCapChangePercentage24h) == 0 &&
-                Double.compare(coin.circulatingSupply, circulatingSupply) == 0 &&
-                Double.compare(coin.totalSupply, totalSupply) == 0 &&
-                Double.compare(coin.maxSupply, maxSupply) == 0 &&
-                Double.compare(coin.ath, ath) == 0 &&
-                Double.compare(coin.athChangePercentage, athChangePercentage) == 0 &&
-                Objects.equals(athDate, coin.athDate) &&
-                Double.compare(coin.atl, atl) == 0 &&
-                Double.compare(coin.atlChangePercentage, atlChangePercentage) == 0 &&
-                Objects.equals(atlDate, coin.atlDate) &&
-                Objects.equals(roi, coin.roi) &&
-                Objects.equals(lastUpdated, coin.lastUpdated);
+        return Objects.equals(coinId, coin.coinId);
     }
 
+    /**
+     * Overrides the {@code hashCode} method to generate hash based on {@code coinId}.
+     *
+     * @return the hash code based on {@code coinId}
+     */
     @Override
     public int hashCode() {
-        return Objects.hash(coinId, symbol, name, image, currentPrice, marketCap, marketCapRank, fullyDilutedValuation,
-                totalVolume, high24h, low24h, priceChange24h, priceChangePercentage24h, priceChangePercentage1h,
-                priceChangePercentage7d, priceChangePercentage14d, priceChangePercentage30d, priceChangePercentage200d,
-                priceChangePercentage1y, marketCapChange24h, marketCapChangePercentage24h, circulatingSupply,
-                totalSupply, maxSupply, ath, athChangePercentage, athDate, atl, atlChangePercentage, atlDate, roi,
-                lastUpdated);
+        return Objects.hash(coinId);
     }
 }

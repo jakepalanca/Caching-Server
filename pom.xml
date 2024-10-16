@@ -17,6 +17,14 @@
 
   <dependencies>
 
+    <!-- JWT -->
+    <dependency>
+      <groupId>com.auth0</groupId>
+      <artifactId>java-jwt</artifactId>
+      <version>4.2.1</version>
+    </dependency>
+
+    <!-- Circle Packer -->
     <dependency>
       <groupId>io.github.jakepalanca</groupId>
       <artifactId>circle-packer</artifactId>

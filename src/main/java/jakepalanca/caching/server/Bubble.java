@@ -71,14 +71,6 @@ public class Bubble implements Packable {
     }
 
     /**
-     * Default constructor for serialization purposes.
-     */
-    public Bubble() {
-        this.packableId = UUID.randomUUID();
-        this.coin = null;
-    }
-
-    /**
      * Gets the unique identifier for packing.
      *
      * @return the UUID of this bubble
