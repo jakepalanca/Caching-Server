@@ -86,9 +86,6 @@ public class AttestationValidator {
             // Verify the token's signature and claims
             algorithm.verify(decodedJWT);
 
-            // Additional claim validations can be performed here
-            // For example, issuer, audience, expiration, etc.
-
             String issuer = decodedJWT.getIssuer();
             if (!"https://appleid.apple.com".equals(issuer)) {
                 logger.warn("Invalid issuer: {}", issuer);
@@ -154,8 +151,7 @@ public class AttestationValidator {
         };
 
         try {
-            boolean success = httpClient.execute(request, responseHandler);
-            return success;
+            return httpClient.execute(request, responseHandler);
         } catch (IOException e) {
             logger.error("IOException while fetching Apple's public keys: {}", e.getMessage(), e);
             return false;

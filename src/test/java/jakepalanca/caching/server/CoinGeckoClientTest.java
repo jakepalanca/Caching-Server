@@ -24,7 +24,7 @@ public class CoinGeckoClientTest {
      * @throws ParseException if an error occurs while parsing the response
      */
     @Test
-    public void testFetchTopCoinsWithCorrectProperties() throws IOException, ParseException {
+    public void testFetchTopCoinsWithCorrectProperties() throws IOException, ParseException, java.text.ParseException {
         // Mock the CoinGeckoClient
         CoinGeckoClient client = Mockito.mock(CoinGeckoClient.class);
 
@@ -64,10 +64,10 @@ public class CoinGeckoClientTest {
         mockCoin.setLastUpdated("2024-08-25T00:00:00Z");
 
         // Mock the fetchTopCoins method to return the mockCoin
-        when(client.fetchTopCoins()).thenReturn(List.of(mockCoin));
+        when(client.fetchTopCoins(4)).thenReturn(List.of(mockCoin));
 
         // Call the method and assert results
-        List<Coin> coins = client.fetchTopCoins();
+        List<Coin> coins = client.fetchTopCoins(4);
         assertThat(coins).isNotEmpty();
         Coin coin = coins.get(0);
 
