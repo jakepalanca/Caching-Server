@@ -82,10 +82,10 @@ class CryptoCacheFunctionalTest {
         mockCoin.setRoi(null);
         mockCoin.setLastUpdated("2024-08-25T00:00:00Z");
 
-        when(client.fetchTopCoins()).thenReturn(List.of(mockCoin));
+        when(client.fetchTopCoins(4)).thenReturn(List.of(mockCoin));
 
         // Call the method and assert results
-        List<Coin> coins = client.fetchTopCoins();
+        List<Coin> coins = client.fetchTopCoins(4);
         Assertions.assertThat(coins).isNotEmpty();
         Coin coin = coins.get(0);
 
