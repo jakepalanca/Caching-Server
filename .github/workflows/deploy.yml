@@ -17,10 +17,10 @@ jobs:
       # Step 2: Set up SSH and apply proper permissions
       - name: Set up SSH
         run: |
-          echo "Setting up SSH directory and writing private key"
+          echo "Setting up SSH directory and writing the private key"
           mkdir -p ~/.ssh
           echo "${{ secrets.INSTANCE_SSH }}" | tr -d '\r' > ~/.ssh/id_rsa
-          chmod 400 ~/.ssh/id_rsa  # Use chmod 400 for proper permissions
+          chmod 400 ~/.ssh/id_rsa  # Apply proper permissions to the key
           echo "Fetching known hosts and adding EC2 instance"
           ssh-keyscan -H ec2-18-212-152-50.compute-1.amazonaws.com >> ~/.ssh/known_hosts
           echo "SSH setup complete"
@@ -31,20 +31,27 @@ jobs:
           echo "Starting SSH connection to EC2"
           ssh -tt -o StrictHostKeyChecking=no ec2-user@ec2-18-212-152-50.compute-1.amazonaws.com << 'EOF'
           echo "Connected to EC2"
-          echo "Navigating to project directory"
+          echo "Navigating to the project directory"
           cd /home/ec2-user/Caching-Server || { echo "Directory not found"; exit 1; }
 
           echo "Pulling latest changes from GitHub"
           git pull origin master || { echo "Git pull failed"; exit 1; }
 
-          echo "Building project with Maven"
+          echo "Building the project with Maven"
           mvn clean install -DskipTests=false || { echo "Maven build failed"; exit 1; }
 
-          echo "Killing any existing running instance of the server"
-          pkill -f 'java -jar' || echo "No existing server process found to kill"
+          echo "Stopping any running instance of the server"
+          pkill -f 'java -jar' || echo "No running server process found"
 
           echo "Starting the server in the background"
           nohup java -jar target/jakepalanca.caching.server-1.0.1.jar > server.log 2>&1 &
 
           echo "Server started successfully in the background"
           EOF
+
+      # Step 4: Ensure runner finishes gracefully after deployment (success or failure)
+      - name: Finish GitHub Runner
+        if: always()
+        run: |
+          echo "Deployment finished, cleaning up"
+          exit 0
