@@ -29,6 +29,13 @@ jobs:
                 sudo yum install git -y
             fi
           
+            # Ensure Maven is installed
+            if ! command -v mvn &> /dev/null
+            then
+                echo "Maven could not be found, installing..."
+                sudo yum install maven -y
+            fi
+          
             # Navigate to home directory
             cd /home/ec2-user
           
@@ -45,9 +52,9 @@ jobs:
             mvn clean
             rm -rf target/
           
-            # Ensure Maven is installed and build the project with tests
-            mvn install
-
+            # Build the project with tests
+            mvn install -DskipTests=false
+          
             # Check for running application on port 8080 and stop it if necessary
             if lsof -Pi :8080 -sTCP:LISTEN -t >/dev/null ; then
               echo "Stopping existing application on port 8080..."
@@ -61,8 +68,7 @@ jobs:
             APP_PID=$!
             echo "Application started successfully with PID: $APP_PID on port 8080"
             echo "Logs are available in /home/ec2-user/Caching-Server/app.log"
-
-            exit
+          
           EOF
 
       - name: Clean up SSH key
