@@ -50,8 +50,12 @@ jobs:
           echo "Cleaning and building the project with Maven"
           mvn clean install -U -DskipTests=false || { echo "Maven build failed"; exit 1; }
 
-          echo "Stopping any running server process"
-          pkill -f 'mvn exec:java' && echo "Previous server process stopped" || echo "No running server process found"
+          echo "Stopping any running server process on port 8080"
+          if sudo lsof -i :8080 | grep java; then
+              sudo kill -9 $(sudo lsof -t -i :8080) && echo "Stopped existing Java process on port 8080"
+          else
+              echo "No existing Java process found on port 8080"
+          fi
 
           echo "Starting the server using Maven in the background"
           nohup mvn exec:java > server.log 2>&1 &
