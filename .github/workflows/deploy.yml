@@ -18,22 +18,9 @@ jobs:
           echo "${{ secrets.INSTANCE_SSH }}" > /tmp/Github-Action.pem
           chmod 600 /tmp/Github-Action.pem
 
-      - name: Install AWS CLI
-        run: sudo apt-get install awscli -y
-
-      - name: Get EC2 Instance Public IP
-        id: get_ip
-        run: |
-          PUBLIC_IP=$(aws ec2 describe-instances \
-            --filters "Name=instance-id,Values=${{ secrets.INSTANCE_ID }}" \
-            --query "Reservations[0].Instances[0].PublicIpAddress" \
-            --output text)
-          echo "Public IP is: $PUBLIC_IP"
-          echo "::set-output name=public_ip::$PUBLIC_IP"
-
       - name: SSH into EC2 instance and deploy application
         run: |
-          ssh -i /tmp/Github-Action.pem -o StrictHostKeyChecking=no -t ec2-user@${{ steps.get_ip.outputs.public_ip }} << 'EOF'
+          ssh -i /tmp/Github-Action.pem -o StrictHostKeyChecking=no -t ec2-user@ec2-18-212-152-50.compute-1.amazonaws.com << 'EOF'
           
             # Ensure Git is installed
             if ! command -v git &> /dev/null; then
