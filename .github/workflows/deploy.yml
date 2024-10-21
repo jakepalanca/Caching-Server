@@ -22,6 +22,11 @@ jobs:
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
           echo "SSH setup complete"
 
+      - name: Build with Maven
+        run: |
+          echo "Cleaning and building the project with Maven"
+          mvn clean dependency:purge-local-repository install -U -DskipTests
+
       - name: Run Maven Tests on EC2
         run: |
           echo "Connecting to EC2 instance to run Maven tests"
