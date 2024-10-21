@@ -13,29 +13,38 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Set up SSH
-        run: |
-          echo "${{ secrets.INSTANCE_SSH }}" > /tmp/Github-Action.pem
-          chmod 600 /tmp/Github-Action.pem
+      - name: Set up SSH Key
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.INSTANCE_SSH }}
 
-      - name: SSH into EC2 instance and deploy application
-        run: |
-          ssh -i /tmp/Github-Action.pem -o StrictHostKeyChecking=no -t ec2-user@ec2-18-212-152-50.compute-1.amazonaws.com '
+      - name: Deploy Application via SSH
+        uses: appleboy/ssh-action@v0.1.4
+        with:
+          host: ec2-18-212-152-50.compute-1.amazonaws.com
+          username: ec2-user
+          key: ${{ secrets.INSTANCE_SSH }}
+          port: 22
+          script: |
+            #!/bin/bash
+
+            set -e
+
             # Ensure Git is installed
             if ! command -v git &> /dev/null; then
-              echo "Git is not installed. Installing Git..."
-              sudo yum install git -y
+                echo "Git is not installed. Installing Git..."
+                sudo yum install git -y
             fi
 
             # Ensure Maven is installed
             if ! command -v mvn &> /dev/null; then
-              echo "Maven is not installed. Installing Maven..."
-              sudo yum install maven -y
+                echo "Maven is not installed. Installing Maven..."
+                sudo yum install maven -y
             fi
-          
+
             # Navigate to the home directory
             cd /home/ec2-user
-          
+
             # Clone the repository or pull the latest changes
             if [ -d "Caching-Server" ]; then
               cd Caching-Server
@@ -46,26 +55,21 @@ jobs:
               git clone https://github.com/jakepalanca/Caching-Server.git
               cd Caching-Server
             fi
-          
+
             # Clean previous build artifacts and stale test classes
             echo "Cleaning project..."
             mvn clean
             rm -rf target/
-          
+
             # Build the project with tests
             echo "Building the project with Maven..."
             mvn install -DskipTests=false
-          
-            # If you are using Systemd (optional)
+
+            # If using Systemd (optional)
             echo "Reloading Systemd, enabling and starting the application..."
             sudo systemctl daemon-reload
             sudo systemctl enable caching-server.service
             sudo systemctl restart caching-server.service
-          
+
             # Check the status of the service
             sudo systemctl status caching-server.service
-          '
-
-      - name: Clean up SSH key
-        run: |
-          rm -f /tmp/Github-Action.pem
