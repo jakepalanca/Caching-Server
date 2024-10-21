@@ -14,19 +14,19 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 2: Set up SSH and log the key setup process
+      # Step 2: Set up SSH and apply proper permissions
       - name: Set up SSH
         run: |
           echo "Setting up SSH directory and writing private key"
           mkdir -p ~/.ssh
-          echo "Private key saved to ~/.ssh/id_rsa"
           echo "${{ secrets.INSTANCE_SSH }}" | tr -d '\r' > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          chmod 400 ~/.ssh/id_rsa  # Use chmod 400 for proper permissions
+          echo "Private key saved and permissions set to 400"
           echo "Fetching known hosts and adding EC2 instance"
           ssh-keyscan -H ec2-18-212-152-50.compute-1.amazonaws.com >> ~/.ssh/known_hosts
           echo "SSH setup complete"
 
-      # Step 3: SSH into the EC2 instance and add logs for each stage
+      # Step 3: SSH into EC2 instance and add logs for each stage
       - name: Deploy to EC2
         run: |
           echo "Starting SSH connection to EC2"
@@ -42,4 +42,3 @@ jobs:
           sudo systemctl restart caching-server.service || { echo "Failed to restart service"; exit 1; }
           echo "Deployment completed successfully on EC2"
           EOF
-        shell: /usr/bin/bash -e {0}
