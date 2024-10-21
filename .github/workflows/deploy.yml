@@ -1,6 +1,5 @@
 name: Deploy to EC2
 
-# Trigger the workflow on push events to the master branch
 on:
   push:
     branches:
@@ -11,22 +10,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 2: Set up SSH
-      - name: Set up SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.INSTANCE_SSH }}" | tr -d '\r' > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ec2-18-212-152-50.compute-1.amazonaws.com >> ~/.ssh/known_hosts
+      - name: Set up SSH Agent
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.INSTANCE_SSH }}
 
-      # Step 3: SSH into the EC2 instance and deploy the application
-      - name: Deploy to EC2
+      - name: SSH and Deploy
         run: |
-          ssh -i ~/.ssh/id_rsa ec2-user@ec2-18-212-152-50.compute-1.amazonaws.com << 'EOF'
+          ssh -o StrictHostKeyChecking=no ec2-user@ec2-18-212-152-50.compute-1.amazonaws.com << 'EOF'
           echo "Deploying application to EC2"
           cd /home/ec2-user/Caching-Server
           git pull origin master
