@@ -14,21 +14,32 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 2: Add the SSH key and configure SSH
+      # Step 2: Set up SSH and log the key setup process
       - name: Set up SSH
         run: |
+          echo "Setting up SSH directory and writing private key"
           mkdir -p ~/.ssh
+          echo "Private key saved to ~/.ssh/id_rsa"
           echo "${{ secrets.INSTANCE_SSH }}" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          echo "Fetching known hosts and adding EC2 instance"
           ssh-keyscan -H ec2-18-212-152-50.compute-1.amazonaws.com >> ~/.ssh/known_hosts
+          echo "SSH setup complete"
 
-      # Step 3: SSH into EC2 instance and run deployment commands
+      # Step 3: SSH into the EC2 instance and add logs for each stage
       - name: Deploy to EC2
         run: |
+          echo "Starting SSH connection to EC2"
           ssh -tt -o StrictHostKeyChecking=no ec2-user@ec2-18-212-152-50.compute-1.amazonaws.com << 'EOF'
-          echo "Deploying application to EC2"
-          cd /home/ec2-user/Caching-Server
-          git pull origin master
-          mvn clean install -DskipTests=false
-          sudo systemctl restart caching-server.service
+          echo "Connected to EC2"
+          echo "Navigating to project directory"
+          cd /home/ec2-user/Caching-Server || { echo "Directory not found"; exit 1; }
+          echo "Pulling latest changes from GitHub"
+          git pull origin master || { echo "Git pull failed"; exit 1; }
+          echo "Building project with Maven"
+          mvn clean install -DskipTests=false || { echo "Maven build failed"; exit 1; }
+          echo "Restarting caching server"
+          sudo systemctl restart caching-server.service || { echo "Failed to restart service"; exit 1; }
+          echo "Deployment completed successfully on EC2"
           EOF
+        shell: /usr/bin/bash -e {0}
