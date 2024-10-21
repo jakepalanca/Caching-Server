@@ -20,18 +20,17 @@ jobs:
 
       - name: SSH into EC2 instance and deploy application
         run: |
-          ssh -i /tmp/Github-Action.pem -o StrictHostKeyChecking=no -t ec2-user@ec2-18-212-152-50.compute-1.amazonaws.com << 'EOF'
-          
+          ssh -i /tmp/Github-Action.pem -o StrictHostKeyChecking=no -t ec2-user@ec2-18-212-152-50.compute-1.amazonaws.com '
             # Ensure Git is installed
             if ! command -v git &> /dev/null; then
-                echo "Git is not installed. Installing Git..."
-                sudo yum install git -y
+              echo "Git is not installed. Installing Git..."
+              sudo yum install git -y
             fi
 
             # Ensure Maven is installed
             if ! command -v mvn &> /dev/null; then
-                echo "Maven is not installed. Installing Maven..."
-                sudo yum install maven -y
+              echo "Maven is not installed. Installing Maven..."
+              sudo yum install maven -y
             fi
           
             # Navigate to the home directory
@@ -65,8 +64,7 @@ jobs:
           
             # Check the status of the service
             sudo systemctl status caching-server.service
-          
-          EOF
+          '
 
       - name: Clean up SSH key
         run: |
