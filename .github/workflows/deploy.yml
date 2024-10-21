@@ -4,7 +4,7 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - master  # Automatically triggers on updates to the 'master' branch
+      - master
 
 jobs:
   deploy:
@@ -19,7 +19,7 @@ jobs:
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.INSTANCE_SSH }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.INSTANCE_SSH }}" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ec2-18-212-152-50.compute-1.amazonaws.com >> ~/.ssh/known_hosts
 
@@ -27,7 +27,6 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh -i ~/.ssh/id_rsa ec2-user@ec2-18-212-152-50.compute-1.amazonaws.com << 'EOF'
-          # Your deployment commands here
           echo "Deploying application to EC2"
           cd /home/ec2-user/Caching-Server
           git pull origin master
