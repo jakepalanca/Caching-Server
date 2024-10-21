@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy to EC2
 
 on:
   push:
@@ -18,56 +18,66 @@ jobs:
           echo "${{ secrets.INSTANCE_SSH }}" > /tmp/Github-Action.pem
           chmod 600 /tmp/Github-Action.pem
 
+      - name: Install AWS CLI
+        run: sudo apt-get install awscli -y
+
+      - name: Get EC2 Instance Public IP
+        id: get_ip
+        run: |
+          PUBLIC_IP=$(aws ec2 describe-instances \
+            --filters "Name=instance-id,Values=${{ secrets.INSTANCE_ID }}" \
+            --query "Reservations[0].Instances[0].PublicIpAddress" \
+            --output text)
+          echo "Public IP is: $PUBLIC_IP"
+          echo "::set-output name=public_ip::$PUBLIC_IP"
+
       - name: SSH into EC2 instance and deploy application
         run: |
-          ssh -i /tmp/Github-Action.pem -o StrictHostKeyChecking=no ec2-user@ec2-18-212-152-50.compute-1.amazonaws.com << 'EOF'
+          ssh -i /tmp/Github-Action.pem -o StrictHostKeyChecking=no -t ec2-user@${{ steps.get_ip.outputs.public_ip }} << 'EOF'
           
             # Ensure Git is installed
-            if ! command -v git &> /dev/null
-            then
-                echo "Git could not be found, installing..."
+            if ! command -v git &> /dev/null; then
+                echo "Git is not installed. Installing Git..."
                 sudo yum install git -y
             fi
-          
+
             # Ensure Maven is installed
-            if ! command -v mvn &> /dev/null
-            then
-                echo "Maven could not be found, installing..."
+            if ! command -v mvn &> /dev/null; then
+                echo "Maven is not installed. Installing Maven..."
                 sudo yum install maven -y
             fi
           
-            # Navigate to home directory
+            # Navigate to the home directory
             cd /home/ec2-user
           
             # Clone the repository or pull the latest changes
             if [ -d "Caching-Server" ]; then
               cd Caching-Server
+              echo "Pulling the latest changes from master..."
               git pull origin master
             else
+              echo "Cloning the repository..."
               git clone https://github.com/jakepalanca/Caching-Server.git
               cd Caching-Server
             fi
           
             # Clean previous build artifacts and stale test classes
+            echo "Cleaning project..."
             mvn clean
             rm -rf target/
           
             # Build the project with tests
+            echo "Building the project with Maven..."
             mvn install -DskipTests=false
           
-            # Check for running application on port 8080 and stop it if necessary
-            if lsof -Pi :8080 -sTCP:LISTEN -t >/dev/null ; then
-              echo "Stopping existing application on port 8080..."
-              sudo fuser -k 8080/tcp
-            fi
+            # If you are using Systemd (optional)
+            echo "Reloading Systemd, enabling and starting the application..."
+            sudo systemctl daemon-reload
+            sudo systemctl enable caching-server.service
+            sudo systemctl restart caching-server.service
           
-            # Run the application using Maven exec:java in the background, ensuring Javalin runs on port 8080
-            nohup mvn exec:java -Dexec.mainClass="jakepalanca.caching.server.CryptoCacheApplication" > app.log 2>&1 &
-          
-            # Get the process ID of the last background command
-            APP_PID=$!
-            echo "Application started successfully with PID: $APP_PID on port 8080"
-            echo "Logs are available in /home/ec2-user/Caching-Server/app.log"
+            # Check the status of the service
+            sudo systemctl status caching-server.service
           
           EOF
 
