@@ -10,48 +10,81 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 2: Set up SSH and apply proper permissions
       - name: Set up SSH
         run: |
-          echo "Setting up SSH directory and writing the private key"
+          echo "Setting up SSH and adding the EC2 host to known hosts"
           mkdir -p ~/.ssh
           echo "${{ secrets.INSTANCE_SSH }}" | tr -d '\r' > ~/.ssh/id_rsa
-          chmod 400 ~/.ssh/id_rsa  # Apply proper permissions to the key
-          echo "Fetching known hosts and adding EC2 instance"
-          ssh-keyscan -H ec2-18-212-152-50.compute-1.amazonaws.com >> ~/.ssh/known_hosts
+          chmod 400 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
           echo "SSH setup complete"
 
-      # Step 3: SSH into EC2 instance and run Maven commands to manage the server
-      - name: Deploy to EC2
+      - name: Run Maven Tests on EC2
         run: |
-          echo "Starting SSH connection to EC2"
-          ssh -tt -o StrictHostKeyChecking=no ec2-user@ec2-18-212-152-50.compute-1.amazonaws.com << 'EOF'
-          echo "Connected to EC2"
-          echo "Navigating to the project directory"
-          cd /home/ec2-user/Caching-Server || { echo "Directory not found"; exit 1; }
+          echo "Connecting to EC2 instance to run Maven tests"
+          ssh -tt -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+          cd /home/ec2-user/Caching-Server || { echo "Project directory not found"; exit 1; }
 
           echo "Pulling latest changes from GitHub"
           git pull origin master || { echo "Git pull failed"; exit 1; }
 
-          echo "Building the project with Maven"
-          mvn clean install -DskipTests=false || { echo "Maven build failed"; exit 1; }
+          echo "Running Maven tests"
+          mvn clean test -DskipTests=false || { echo "Maven tests failed, exiting"; exit 1; }
+          echo "Maven tests passed successfully"
+          EOF
 
-          echo "Stopping any running instance of the server"
-          pkill -f 'java -jar' || echo "No running server process found"
+      - name: Deploy and Start Server (if tests passed)
+        run: |
+          echo "Starting deployment after successful tests"
+          ssh -tt -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+          
+          echo "Navigating to project directory"
+          cd /home/ec2-user/Caching-Server || { echo "Project directory not found"; exit 1; }
+
+          echo "Stopping any running server process"
+          pkill -f 'java -jar' && echo "Previous server process stopped" || echo "No running server process found"
+
+          echo "Building project with Maven"
+          mvn clean install -DskipTests=false || { echo "Maven build failed"; exit 1; }
 
           echo "Starting the server in the background"
           nohup java -jar target/jakepalanca.caching.server-1.0.1.jar > server.log 2>&1 &
 
-          echo "Server started successfully in the background"
+          echo "Waiting for the server to start on EC2"
+          retries=30
+          until curl -s http://${{ secrets.EC2_HOST }}:8080/health || [ $retries -eq 0 ]; do
+              echo "Waiting for the server, $((retries--)) remaining attempts..."
+              sleep 5
+          done
+
+          if curl -s http://${{ secrets.EC2_HOST }}:8080/health; then
+              echo "Server is up and running"
+          else
+              echo "Server failed to start"
+              exit 1
+          fi
           EOF
 
-      # Step 4: Ensure runner finishes gracefully after deployment (success or failure)
-      - name: Finish GitHub Runner
+      - name: Handle Failure or Success
+        if: failure()
+        run: |
+          echo "Deployment failed, ensuring the previous server stays running"
+          ssh -tt -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+          echo "Restarting previous server if available"
+          if [ -f target/jakepalanca.caching.server-1.0.1.jar ]; then
+              echo "Starting the previous server version"
+              nohup java -jar target/jakepalanca.caching.server-1.0.1.jar > server.log 2>&1 &
+              echo "Previous server version restarted"
+          else
+              echo "No previous version found to restart"
+          fi
+          EOF
+
+      - name: Cleanup
         if: always()
         run: |
-          echo "Deployment finished, cleaning up"
-          exit 0
+          echo "Cleaning up SSH credentials and artifacts"
+          rm -rf ~/.ssh
