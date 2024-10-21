@@ -18,14 +18,15 @@ jobs:
           echo "Setting up SSH and adding the EC2 host to known hosts"
           mkdir -p ~/.ssh
           echo "${{ secrets.INSTANCE_SSH }}" | tr -d '\r' > ~/.ssh/id_rsa
-          chmod 400 ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
           echo "SSH setup complete"
 
       - name: Run Maven Tests on EC2
         run: |
           echo "Connecting to EC2 instance to run Maven tests"
-          ssh -tt -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+          set -e
           cd /home/ec2-user/Caching-Server || { echo "Project directory not found"; exit 1; }
 
           echo "Pulling latest changes from GitHub"
@@ -37,10 +38,11 @@ jobs:
           EOF
 
       - name: Deploy and Start Server (if tests passed)
+        if: success()
         run: |
           echo "Starting deployment after successful tests"
-          ssh -tt -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
-          
+          ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+          set -e
           echo "Navigating to project directory"
           cd /home/ec2-user/Caching-Server || { echo "Project directory not found"; exit 1; }
 
@@ -55,24 +57,27 @@ jobs:
 
           echo "Waiting for the server to start on EC2"
           retries=30
-          until curl -s http://${{ secrets.EC2_HOST }}:8080/health || [ $retries -eq 0 ]; do
-              echo "Waiting for the server, $((retries--)) remaining attempts..."
-              sleep 5
+          while [ $retries -gt 0 ]; do
+              if curl -s http://${{ secrets.EC2_HOST }}:8080/health; then
+                  echo "Server is up and running"
+                  exit 0
+              else
+                  echo "Waiting for the server to start... Attempts left: $retries"
+                  sleep 5
+                  retries=$((retries - 1))
+              fi
           done
 
-          if curl -s http://${{ secrets.EC2_HOST }}:8080/health; then
-              echo "Server is up and running"
-          else
-              echo "Server failed to start"
-              exit 1
-          fi
+          echo "Server failed to start after multiple attempts"
+          exit 1
           EOF
 
-      - name: Handle Failure or Success
+      - name: Handle Failure
         if: failure()
         run: |
           echo "Deployment failed, ensuring the previous server stays running"
-          ssh -tt -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+          set -e
           echo "Restarting previous server if available"
           if [ -f target/jakepalanca.caching.server-1.0.1.jar ]; then
               echo "Starting the previous server version"
