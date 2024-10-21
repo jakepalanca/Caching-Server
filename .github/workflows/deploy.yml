@@ -24,10 +24,10 @@ jobs:
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
           echo "SSH setup complete"
 
-      # Step 3: Run Maven Tests on EC2
-      - name: Run Maven Tests on EC2
+      # Step 3: Deploy and Start Server using Maven
+      - name: Deploy and Start Server using Maven
         run: |
-          echo "Connecting to EC2 instance to run Maven tests"
+          echo "Connecting to EC2 instance to deploy and run Maven commands"
           ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
           set -e
           echo "Navigating to project directory"
@@ -36,29 +36,25 @@ jobs:
           echo "Pulling latest changes from GitHub"
           git pull origin master || { echo "Git pull failed"; exit 1; }
 
+          echo "Installing Maven if not already installed"
+          if ! command -v mvn &> /dev/null
+          then
+              echo "Maven not found, installing Maven"
+              sudo yum update -y
+              sudo yum install -y maven
+              echo "Maven installed successfully"
+          else
+              echo "Maven is already installed"
+          fi
+
           echo "Cleaning and building the project with Maven"
           mvn clean install -U -DskipTests=false || { echo "Maven build failed"; exit 1; }
 
-          echo "Running Maven tests"
-          mvn test || { echo "Maven tests failed, exiting"; exit 1; }
-          echo "Maven tests passed successfully"
-          EOF
-
-      # Step 4: Deploy and Start Server (if tests passed)
-      - name: Deploy and Start Server (if tests passed)
-        if: success()
-        run: |
-          echo "Starting deployment after successful tests"
-          ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
-          set -e
-          echo "Navigating to project directory"
-          cd /home/ec2-user/Caching-Server || { echo "Project directory not found"; exit 1; }
-
           echo "Stopping any running server process"
-          pkill -f 'java -jar' && echo "Previous server process stopped" || echo "No running server process found"
+          pkill -f 'mvn exec:java' && echo "Previous server process stopped" || echo "No running server process found"
 
-          echo "Starting the server in the background"
-          nohup java -jar target/jakepalanca.caching.server-1.0.1.jar > server.log 2>&1 &
+          echo "Starting the server using Maven in the background"
+          nohup mvn exec:java > server.log 2>&1 &
 
           echo "Waiting for the server to start on EC2"
           retries=30
@@ -77,24 +73,27 @@ jobs:
           exit 1
           EOF
 
-      # Step 5: Handle Failure
+      # Step 4: Handle Failure
       - name: Handle Failure
         if: failure()
         run: |
           echo "Deployment failed, ensuring the previous server stays running"
           ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
           set -e
-          echo "Restarting previous server if available"
-          if [ -f target/jakepalanca.caching.server-1.0.1.jar ]; then
-              echo "Starting the previous server version"
-              nohup java -jar target/jakepalanca.caching.server-1.0.1.jar > server.log 2>&1 &
-              echo "Previous server version restarted"
+          echo "Navigating to project directory"
+          cd /home/ec2-user/Caching-Server || { echo "Project directory not found"; exit 1; }
+
+          echo "Restarting previous server using Maven if available"
+          if [ -f pom.xml ]; then
+              echo "Starting the server using Maven in the background"
+              nohup mvn exec:java > server.log 2>&1 &
+              echo "Server restarted successfully"
           else
-              echo "No previous version found to restart"
+              echo "pom.xml not found, cannot restart server"
           fi
           EOF
 
-      # Step 6: Fetch Server Logs on Failure
+      # Step 5: Fetch Server Logs on Failure
       - name: Fetch Server Logs on Failure
         if: failure()
         run: |
@@ -102,9 +101,10 @@ jobs:
           scp -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/Caching-Server/server.log ./server.log
           echo "Server logs downloaded to runner"
 
-      # Step 7: Cleanup
+      # Step 6: Cleanup
       - name: Cleanup
         if: always()
         run: |
           echo "Cleaning up SSH credentials and artifacts"
           rm -rf ~/.ssh
+          echo "Cleanup complete"
