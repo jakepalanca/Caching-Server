@@ -1,10 +1,10 @@
 name: Deploy to EC2
 
-# Trigger the workflow on push events to the main branch
+# Trigger the workflow on push events to the master branch
 on:
   push:
     branches:
-      - main  # Automatically triggers on updates to the 'main' branch
+      - master  # Automatically triggers on updates to the 'master' branch
 
 jobs:
   deploy:
@@ -30,7 +30,7 @@ jobs:
           # Your deployment commands here
           echo "Deploying application to EC2"
           cd /home/ec2-user/Caching-Server
-          git pull origin main
+          git pull origin master
           mvn clean install -DskipTests=false
           sudo systemctl restart caching-server.service
           EOF
