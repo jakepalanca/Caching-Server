@@ -21,12 +21,11 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.INSTANCE_SSH }}" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 400 ~/.ssh/id_rsa  # Use chmod 400 for proper permissions
-          echo "Private key saved and permissions set to 400"
           echo "Fetching known hosts and adding EC2 instance"
           ssh-keyscan -H ec2-18-212-152-50.compute-1.amazonaws.com >> ~/.ssh/known_hosts
           echo "SSH setup complete"
 
-      # Step 3: SSH into EC2 instance and add logs for each stage
+      # Step 3: SSH into EC2 instance and run Maven commands to manage the server
       - name: Deploy to EC2
         run: |
           echo "Starting SSH connection to EC2"
@@ -34,11 +33,18 @@ jobs:
           echo "Connected to EC2"
           echo "Navigating to project directory"
           cd /home/ec2-user/Caching-Server || { echo "Directory not found"; exit 1; }
+
           echo "Pulling latest changes from GitHub"
           git pull origin master || { echo "Git pull failed"; exit 1; }
+
           echo "Building project with Maven"
           mvn clean install -DskipTests=false || { echo "Maven build failed"; exit 1; }
-          echo "Restarting caching server"
-          sudo systemctl restart caching-server.service || { echo "Failed to restart service"; exit 1; }
-          echo "Deployment completed successfully on EC2"
+
+          echo "Killing any existing running instance of the server"
+          pkill -f 'java -jar' || echo "No existing server process found to kill"
+
+          echo "Starting the server in the background"
+          nohup java -jar target/jakepalanca.caching.server-1.0.1.jar > server.log 2>&1 &
+
+          echo "Server started successfully in the background"
           EOF
