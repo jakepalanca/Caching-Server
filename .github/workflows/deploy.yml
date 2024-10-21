@@ -10,9 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout Code
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      # Step 2: Set up SSH
       - name: Set up SSH
         run: |
           echo "Setting up SSH and adding the EC2 host to known hosts"
@@ -22,40 +24,28 @@ jobs:
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
           echo "SSH setup complete"
 
-      - name: Build with Maven
+      # Step 3: Build, Test, and Deploy on EC2
+      - name: Build, Test, and Deploy on EC2
         run: |
-          echo "Cleaning and building the project with Maven"
-          mvn clean dependency:purge-local-repository install -U -DskipTests
-
-      - name: Run Maven Tests on EC2
-        run: |
-          echo "Connecting to EC2 instance to run Maven tests"
+          echo "Connecting to EC2 instance to build, test, and deploy the application"
           ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
-          set -e
+          set -e  # Exit immediately if a command exits with a non-zero status
+          
+          echo "Navigating to project directory"
           cd /home/ec2-user/Caching-Server || { echo "Project directory not found"; exit 1; }
 
           echo "Pulling latest changes from GitHub"
           git pull origin master || { echo "Git pull failed"; exit 1; }
 
-          echo "Running Maven tests"
-          mvn clean test -DskipTests=false || { echo "Maven tests failed, exiting"; exit 1; }
-          echo "Maven tests passed successfully"
-          EOF
+          echo "Cleaning and building the project with Maven"
+          mvn clean install -U -DskipTests=false || { echo "Maven build failed"; exit 1; }
 
-      - name: Deploy and Start Server (if tests passed)
-        if: success()
-        run: |
-          echo "Starting deployment after successful tests"
-          ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
-          set -e
-          echo "Navigating to project directory"
-          cd /home/ec2-user/Caching-Server || { echo "Project directory not found"; exit 1; }
+          echo "Running Maven tests"
+          mvn test || { echo "Maven tests failed, exiting"; exit 1; }
+          echo "Maven tests passed successfully"
 
           echo "Stopping any running server process"
           pkill -f 'java -jar' && echo "Previous server process stopped" || echo "No running server process found"
-
-          echo "Building project with Maven"
-          mvn clean install -DskipTests=false || { echo "Maven build failed"; exit 1; }
 
           echo "Starting the server in the background"
           nohup java -jar target/jakepalanca.caching.server-1.0.1.jar > server.log 2>&1 &
@@ -77,6 +67,7 @@ jobs:
           exit 1
           EOF
 
+      # Step 4: Handle Failure (Optional)
       - name: Handle Failure
         if: failure()
         run: |
@@ -93,6 +84,7 @@ jobs:
           fi
           EOF
 
+      # Step 5: Cleanup
       - name: Cleanup
         if: always()
         run: |
