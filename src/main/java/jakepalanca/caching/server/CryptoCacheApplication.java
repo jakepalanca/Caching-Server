@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 
 import static org.quartz.JobBuilder.newJob;
 import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
@@ -213,7 +214,17 @@ public class CryptoCacheApplication {
         try {
             logger.info("Scheduling CoinUpdateJob...");
 
-            Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
+            // Define Quartz properties for a single-threaded scheduler
+            Properties props = new Properties();
+            props.setProperty("org.quartz.scheduler.instanceName", "SingleThreadScheduler");
+            props.setProperty("org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool");
+            props.setProperty("org.quartz.threadPool.threadCount", "1"); // Single thread
+            props.setProperty("org.quartz.threadPool.threadPriority", "5");
+            props.setProperty("org.quartz.jobStore.class", "org.quartz.simpl.RAMJobStore"); // In-memory job store
+
+            // Initialize the SchedulerFactory with the properties
+            StdSchedulerFactory factory = new StdSchedulerFactory(props);
+            Scheduler scheduler = factory.getScheduler();
             scheduler.start();
 
             JobDataMap jobDataMap = new JobDataMap();
@@ -235,7 +246,6 @@ public class CryptoCacheApplication {
                             .repeatForever())
                     .withIdentity("coinUpdateTrigger", "group1")
                     .build();
-
 
             scheduler.scheduleJob(job, trigger);
             logger.info("CoinUpdateJob scheduled to run every {} seconds.", intervalInSeconds);
