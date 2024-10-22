@@ -58,10 +58,9 @@ public class CryptoCacheApplication {
         CoinGeckoClient coinGeckoClient = new CoinGeckoClient();
 
         // Initialize AttestationValidator
-        AttestationValidator attestationValidator = new AttestationValidator();
 
         // Create and configure the Javalin server with Attestation Middleware
-        Javalin app = createServer(coinCache, attestationValidator);
+        Javalin app = createServer(coinCache);
         app.start("0.0.0.0", 8080); // Start the server on the default port
         logger.info("Javalin server started on port 8080.");
 
@@ -83,10 +82,9 @@ public class CryptoCacheApplication {
      * </ul>
      *
      * @param coinCache            the {@link CoinCache} instance used to serve coin data
-     * @param attestationValidator the {@link AttestationValidator} instance for validating tokens
      * @return the configured {@link Javalin} server instance
      */
-    public static Javalin createServer(CoinCache coinCache, AttestationValidator attestationValidator) {
+    public static Javalin createServer(CoinCache coinCache) {
         // Create and configure the Javalin server
         Javalin app = Javalin.create(config -> {
             config.jsonMapper(new JavalinJackson()); // Using Jackson for JSON serialization
@@ -105,15 +103,6 @@ public class CryptoCacheApplication {
                 if (attestationToken == null || attestationToken.isEmpty()) {
                     logger.warn("Unauthorized access attempt to {}: Missing attestation token.", path);
                     ctx.status(401).result("Unauthorized: Missing attestation token.");
-                    return;
-                }
-
-                // Validate the attestation token
-                boolean isValid = attestationValidator.validateAttestationToken(attestationToken);
-
-                if (!isValid) {
-                    logger.warn("Unauthorized access attempt to {}: Invalid attestation token.", path);
-                    ctx.status(401).result("Unauthorized: Invalid attestation token.");
                     return;
                 }
 
