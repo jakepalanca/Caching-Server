@@ -63,7 +63,6 @@ public class CryptoCacheApplication {
         Javalin app = createServer(coinCache);
         app.start("0.0.0.0", 8080); // Start the server on the default port
         logger.info("Javalin server started on port 8080.");
-
         // Schedule the CoinUpdateJob
         scheduleCoinUpdateJob(coinCache, coinGeckoClient);
     }
