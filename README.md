@@ -14,7 +14,6 @@ This is a Javalin-based API that caches cryptocurrency data from the CoinGecko A
     - [GET /search](#get-search)
 - [Running the Application](#running-the-application)
 - [Testing](#testing)
-- [Javadocs](#javadocs)
 - [License](#license)
 
 ## Features
