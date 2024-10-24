@@ -33,7 +33,7 @@ public class Coin implements Serializable {
     private double currentPrice;
     private long marketCap;
     private int marketCapRank;
-    private long fullyDilutedValuation;
+    private Long fullyDilutedValuation;
     private long totalVolume;
     private double high24h;
     private double low24h;
