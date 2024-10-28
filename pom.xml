@@ -179,6 +179,7 @@
       </plugin>
 
       <!-- Maven Shade Plugin to run the application -->
+      <!-- Maven Shade Plugin -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
@@ -196,6 +197,11 @@
                   <mainClass>jakepalanca.caching.server.CryptoCacheApplication</mainClass>
                 </transformer>
               </transformers>
+              <!-- Add the finalName configuration -->
+              <finalName>Caching-Server</finalName>
+              <!-- Prevent the original artifact from being replaced -->
+              <shadedArtifactAttached>true</shadedArtifactAttached>
+              <shadedArtifactClassifier>shaded</shadedArtifactClassifier>
             </configuration>
           </execution>
         </executions>
