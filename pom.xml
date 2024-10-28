@@ -194,7 +194,6 @@
             <index>true</index>
             <compress>true</compress>
             <addMavenDescriptor>true</addMavenDescriptor>
-            <sign>false</sign> <!-- Disable signing -->
           </archive>
           <excludes>
             <exclude>META-INF/*.SF</exclude>
