@@ -154,20 +154,6 @@
         </configuration>
       </plugin>
 
-      <!-- Maven Jar Plugin to specify the main class -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>3.2.0</version>
-        <configuration>
-          <archive>
-            <manifest>
-              <mainClass>jakepalanca.caching.server.CryptoCacheApplication</mainClass>
-            </manifest>
-          </archive>
-        </configuration>
-      </plugin>
-
       <!-- Maven Exec Plugin to run the application -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
@@ -185,6 +171,9 @@
         <version>3.2.0</version>
         <configuration>
           <archive>
+            <manifest>
+              <mainClass>jakepalanca.caching.server.CryptoCacheApplication</mainClass>
+            </manifest>
             <manifest>
               <addDefaultImplementationEntries>false</addDefaultImplementationEntries>
             </manifest>
