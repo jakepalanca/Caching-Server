@@ -154,45 +154,30 @@
         </configuration>
       </plugin>
 
-      <!-- Maven Exec Plugin to run the application -->
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>3.0.0</version>
-        <configuration>
-          <mainClass>jakepalanca.caching.server.CryptoCacheApplication</mainClass>
-        </configuration>
-      </plugin>
-
-      <!-- Maven Shade Plugin to run the application -->
+      <!-- Maven Shade Plugin to create an executable JAR with dependencies -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>3.2.0</version>
-        <configuration>
-          <archive>
-            <manifest>
-              <mainClass>jakepalanca.caching.server.CryptoCacheApplication</mainClass>
-            </manifest>
-            <manifest>
-              <addDefaultImplementationEntries>false</addDefaultImplementationEntries>
-            </manifest>
-            <manifestEntries>
-              <Implementation-Version>${project.version}</Implementation-Version>
-            </manifestEntries>
-            <index>true</index>
-            <compress>true</compress>
-            <addMavenDescriptor>true</addMavenDescriptor>
-          </archive>
-          <excludes>
-            <exclude>META-INF/*.SF</exclude>
-            <exclude>META-INF/*.DSA</exclude>
-            <exclude>META-INF/*.RSA</exclude>
-          </excludes>
-        </configuration>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.2.4</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>jakepalanca.caching.server.CryptoCacheApplication</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
 
-      <!-- Maven Surefire Plugin to skip tests -->
+      <!-- Maven Surefire Plugin to run tests -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
@@ -204,6 +189,8 @@
           </environmentVariables>
         </configuration>
       </plugin>
+
+      <!-- Kotlin Maven Plugin -->
       <plugin>
         <groupId>org.jetbrains.kotlin</groupId>
         <artifactId>kotlin-maven-plugin</artifactId>
@@ -211,7 +198,7 @@
         <executions>
           <execution>
             <id>compile</id>
-            <phase>process-sources</phase>
+            <phase>compile</phase>
             <goals>
               <goal>compile</goal>
             </goals>
@@ -221,6 +208,13 @@
                 <source>target/generated-sources/annotations</source>
               </sourceDirs>
             </configuration>
+          </execution>
+          <execution>
+            <id>test-compile</id>
+            <phase>test-compile</phase>
+            <goals>
+              <goal>test-compile</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
