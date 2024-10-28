@@ -140,7 +140,6 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-
   <build>
     <finalName>Caching-Server</finalName>
     <plugins>
@@ -173,6 +172,18 @@
                   <mainClass>jakepalanca.caching.server.CryptoCacheApplication</mainClass>
                 </transformer>
               </transformers>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                    <exclude>META-INF/*.EC</exclude>
+                    <exclude>META-INF/*.SF*</exclude>
+                  </excludes>
+                </filter>
+              </filters>
             </configuration>
           </execution>
         </executions>
@@ -221,4 +232,5 @@
       </plugin>
     </plugins>
   </build>
+
 </project>
