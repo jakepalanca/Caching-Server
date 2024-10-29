@@ -1,7 +1,8 @@
-// ----- CryptoCacheApplication.java -----
+// ----- main/java/jakepalanca/caching/server/CryptoCacheApplication.java -----
 package jakepalanca.caching.server;
 
 import io.javalin.Javalin;
+import io.javalin.http.HttpResponseException;
 import io.javalin.json.JavalinJackson;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
@@ -19,16 +20,16 @@ import static org.quartz.TriggerBuilder.newTrigger;
 
 /**
  * The {@code CryptoCacheApplication} class serves as the entry point to the application.
- * It initializes the CoinCache, AttestationValidator, sets up the Javalin server,
+ * It initializes the CoinCache, sets up the Javalin server,
  * and schedules a job to update the cache periodically.
  *
  * <p>The server provides the following endpoints:</p>
  * <ul>
  *   <li>{@code /health} - Health check endpoint</li>
- *   <li>{@code /bubbles/list} - Returns a list of bubbles based on the provided parameters</li>
- *   <li>{@code /coins} - Returns all coins in the cache</li>
- *   <li>{@code /top100} - Returns the top 100 coins in the cache</li>
- *   <li>{@code /search} - Performs a search for coins based on a query string</li>
+ *   <li>{@code /v1/bubbles/list} - Returns a list of bubbles based on the provided parameters</li>
+ *   <li>{@code /v1/coins/all} - Returns all coins in the cache</li>
+ *   <li>{@code /v1/coins/top100} - Returns the top 100 coins in the cache</li>
+ *   <li>{@code /v1/coins/search} - Performs a search for coins based on a query string</li>
  * </ul>
  */
 public class CryptoCacheApplication {
@@ -38,7 +39,7 @@ public class CryptoCacheApplication {
 
     /**
      * The main method that serves as the entry point to the application.
-     * It initializes the CoinCache, AttestationValidator, sets up the Javalin server,
+     * It initializes the CoinCache, sets up the Javalin server,
      * and schedules a job to update the cache.
      *
      * @param args command-line arguments
@@ -57,30 +58,28 @@ public class CryptoCacheApplication {
         // Initialize CoinGeckoClient
         CoinGeckoClient coinGeckoClient = new CoinGeckoClient();
 
-        // Initialize AttestationValidator
-
-        // Create and configure the Javalin server with Attestation Middleware
+        // Create and configure the Javalin server
         Javalin app = createServer(coinCache);
         app.start("0.0.0.0", 8080); // Start the server on the default port
         logger.info("Javalin server started on port 8080.");
+
         // Schedule the CoinUpdateJob
         scheduleCoinUpdateJob(coinCache, coinGeckoClient);
     }
 
     /**
      * Creates and configures the {@link Javalin} server, setting up API routes and handlers.
-     * Adds Attestation Middleware to verify incoming requests.
      *
      * <p>The server provides the following endpoints:</p>
      * <ul>
      *   <li>{@code /health} - Health check endpoint</li>
-     *   <li>{@code /bubbles/list} - Returns a list of bubbles based on the provided parameters</li>
-     *   <li>{@code /coins} - Returns all coins in the cache</li>
-     *   <li>{@code /top100} - Returns the top 100 coins in the cache</li>
-     *   <li>{@code /search} - Performs a search for coins based on a query string</li>
+     *   <li>{@code /v1/bubbles/list} - Returns a list of bubbles based on the provided parameters</li>
+     *   <li>{@code /v1/coins/all} - Returns all coins in the cache</li>
+     *   <li>{@code /v1/coins/top100} - Returns the top 100 coins in the cache</li>
+     *   <li>{@code /v1/coins/search} - Performs a search for coins based on a query string</li>
      * </ul>
      *
-     * @param coinCache            the {@link CoinCache} instance used to serve coin data
+     * @param coinCache the {@link CoinCache} instance used to serve coin data
      * @return the configured {@link Javalin} server instance
      */
     public static Javalin createServer(CoinCache coinCache) {
@@ -89,29 +88,28 @@ public class CryptoCacheApplication {
             config.jsonMapper(new JavalinJackson()); // Using Jackson for JSON serialization
         });
 
-        // Add Attestation Middleware as a 'before' handler to validate tokens for protected endpoints
-        app.before(ctx -> {
-            // Define which endpoints require attestation validation
-            List<String> protectedEndpoints = Arrays.asList("/bubbles/list", "/coins", "/top100", "/search");
-
-            String path = ctx.path();
-            if (protectedEndpoints.contains(path)) {
-                // Retrieve the attestation token from the request headers
-                String attestationToken = ctx.header("X-Apple-App-Attest-Token");
-
-                if (attestationToken == null || attestationToken.isEmpty()) {
-                    logger.warn("Unauthorized access attempt to {}: Missing attestation token.", path);
-                    ctx.status(401).result("Unauthorized: Missing attestation token.");
-                    return;
-                }
-
-                // Token is valid; proceed with the request
-                logger.debug("Attestation token validated for request to {}", path);
-            }
-            // End of protected endpoints check
+        // Global Exception Handling
+        app.exception(HttpResponseException.class, (e, ctx) -> {
+            ErrorResponse errorResponse = new ErrorResponse(
+                    String.valueOf(e.getStatus()),
+                    e.getMessage(),
+                    null
+            );
+            ctx.status(e.getStatus()).json(errorResponse);
+            logger.error("HTTP error {}: {}", e.getStatus(), e.getMessage());
         });
 
-        // Health check endpoint (no attestation required)
+        app.exception(Exception.class, (e, ctx) -> {
+            ErrorResponse errorResponse = new ErrorResponse(
+                    "500",
+                    "Internal Server Error",
+                    e.getMessage()
+            );
+            ctx.status(500).json(errorResponse);
+            logger.error("Unhandled exception: {}", e.getMessage(), e);
+        });
+
+        // Health check endpoint
         app.get("/health", ctx -> {
             ctx.status(200).result("OK");
             logger.debug("Health check endpoint accessed.");
@@ -126,9 +124,7 @@ public class CryptoCacheApplication {
             String yWidthChartViewParam = ctx.queryParam("y_width_chart_view");
 
             if (!validateInputs(idsParam, dataType, timeInterval, xHeightChartViewParam, yWidthChartViewParam)) {
-                logger.warn("Bad request to /bubbles/list: Invalid input parameters.");
-                ctx.status(400).result("Bad Request: Invalid input parameters.");
-                return;
+                throw new HttpResponseException(400, "Bad Request: Invalid input parameters.");
             }
 
             int xHeightScreen;
@@ -140,39 +136,39 @@ public class CryptoCacheApplication {
                 double yWidthScreenDouble = Double.parseDouble(yWidthChartViewParam);
                 yWidthScreen = (int) yWidthScreenDouble;
             } catch (NumberFormatException e) {
-                logger.warn("Bad request to /bubbles/list: Invalid screen dimensions.");
-                ctx.status(400).result("Bad Request: Screen dimensions must be valid numbers.");
-                return;
+                throw new HttpResponseException(400, "Bad Request: Screen dimensions must be valid numbers.");
             }
 
             List<String> coinIds = Arrays.asList(idsParam.split(","));
             List<Coin> coins = coinCache.getCoinsByIds(coinIds);
 
+            if (coins.isEmpty()) {
+                throw new HttpResponseException(404, "No coins found for the provided IDs.");
+            }
+
             List<Bubble> bubbles = bubbleService.createBubbles(coins, dataType, timeInterval.orElse(null), yWidthScreen, xHeightScreen);
 
             ctx.json(bubbles);
-            logger.info("Returned {} bubbles for /bubbles/list.", bubbles.size());
+            logger.info("Returned {} bubbles for /v1/bubbles/list.", bubbles.size());
         });
 
         app.get("/v1/coins/all", ctx -> {
             List<Coin> allCoins = coinCache.getAllCoins();
             if (allCoins.isEmpty()) {
-                logger.warn("Request to /coins but cache is empty.");
-                ctx.status(500).result("Coin cache is empty.");
+                throw new HttpResponseException(500, "Coin cache is empty.");
             } else {
                 ctx.json(allCoins);
-                logger.info("Returned {} coins for /coins.", allCoins.size());
+                logger.info("Returned {} coins for /v1/coins/all.", allCoins.size());
             }
         });
 
         app.get("/v1/coins/top100", ctx -> {
             List<Coin> topCoins = coinCache.getTop100Coins();
             if (topCoins.isEmpty()) {
-                logger.warn("Request to /top100 but cache is empty.");
-                ctx.status(500).result("Coin cache is empty.");
+                throw new HttpResponseException(500, "Coin cache is empty.");
             } else {
                 ctx.json(topCoins);
-                logger.info("Returned top 100 coins for /top100.");
+                logger.info("Returned top 100 coins for /v1/coins/top100.");
             }
         });
 
@@ -180,11 +176,13 @@ public class CryptoCacheApplication {
             String query = ctx.queryParam("query");
             if (query != null && !query.trim().isEmpty()) {
                 List<Coin> searchResults = coinCache.searchCoins(query);
+                if (searchResults.isEmpty()) {
+                    throw new HttpResponseException(404, "No coins found matching the query.");
+                }
                 ctx.json(searchResults);
                 logger.info("Search for '{}' returned {} results.", query, searchResults.size());
             } else {
-                logger.warn("Bad request to /search: Missing or empty query parameter.");
-                ctx.status(400).result("Bad Request: Must provide a non-empty query.");
+                throw new HttpResponseException(400, "Bad Request: Must provide a non-empty query.");
             }
         });
 
@@ -193,10 +191,10 @@ public class CryptoCacheApplication {
 
     /**
      * Schedules a Quartz job that periodically updates the {@link CoinCache} with the latest data from CoinGecko.
-     * The job runs every 15 seconds by default, configurable via the {@code COIN_UPDATE_INTERVAL_MINUTES} environment variable.
+     * The job runs every 30 seconds by default, configurable via the {@code COIN_UPDATE_INTERVAL_SECONDS} environment variable.
      *
-     * @param coinCache        the {@link CoinCache} instance to be updated
-     * @param coinGeckoClient  the {@link CoinGeckoClient} instance used to fetch data
+     * @param coinCache       the {@link CoinCache} instance to be updated
+     * @param coinGeckoClient the {@link CoinGeckoClient} instance used to fetch data
      */
     private static void scheduleCoinUpdateJob(CoinCache coinCache, CoinGeckoClient coinGeckoClient) {
         try {
@@ -253,7 +251,7 @@ public class CryptoCacheApplication {
      * @param timeInterval       the optional time interval for price change calculations
      * @param xHeightScreenParam the height of the screen in pixels
      * @param yWidthScreenParam  the width of the screen in pixels
-     * @return                   {@code true} if all inputs are valid; {@code false} otherwise
+     * @return {@code true} if all inputs are valid; {@code false} otherwise
      */
     private static boolean validateInputs(String idsParam, String dataType, Optional<String> timeInterval, String xHeightScreenParam, String yWidthScreenParam) {
         if (idsParam == null || idsParam.trim().isEmpty()) {
@@ -266,13 +264,9 @@ public class CryptoCacheApplication {
             return false;
         }
 
-        if (dataType.equals("price_change")) {
-            if (!timeInterval.isPresent() || !BubbleService.VALID_TIME_INTERVALS.contains(timeInterval.get())) {
-                logger.warn("Validation failed: 'time_interval' parameter is required and must be valid for 'price_change' data type.");
-                return false;
-            }
-        } else if (timeInterval.isPresent()) {
-            logger.warn("Validation failed: 'time_interval' parameter should not be present for data type '{}'.", dataType);
+        // Allow timeInterval to be provided for any data type
+        if (timeInterval.isPresent() && !BubbleService.VALID_TIME_INTERVALS.contains(timeInterval.get())) {
+            logger.warn("Validation failed: 'time_interval' parameter is invalid.");
             return false;
         }
 
