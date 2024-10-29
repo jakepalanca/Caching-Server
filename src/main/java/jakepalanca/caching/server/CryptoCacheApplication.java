@@ -118,7 +118,7 @@ public class CryptoCacheApplication {
         });
 
         // Define routes
-        app.get("/bubbles/list", ctx -> {
+        app.get("/v1/bubbles/list", ctx -> {
             String idsParam = ctx.queryParam("ids");
             String dataType = ctx.queryParam("data_type");
             Optional<String> timeInterval = Optional.ofNullable(ctx.queryParam("time_interval"));
@@ -154,7 +154,7 @@ public class CryptoCacheApplication {
             logger.info("Returned {} bubbles for /bubbles/list.", bubbles.size());
         });
 
-        app.get("/coins/all", ctx -> {
+        app.get("/v1/coins/all", ctx -> {
             List<Coin> allCoins = coinCache.getAllCoins();
             if (allCoins.isEmpty()) {
                 logger.warn("Request to /coins but cache is empty.");
@@ -165,7 +165,7 @@ public class CryptoCacheApplication {
             }
         });
 
-        app.get("/coins/top100", ctx -> {
+        app.get("/v1/coins/top100", ctx -> {
             List<Coin> topCoins = coinCache.getTop100Coins();
             if (topCoins.isEmpty()) {
                 logger.warn("Request to /top100 but cache is empty.");
@@ -176,7 +176,7 @@ public class CryptoCacheApplication {
             }
         });
 
-        app.get("/coins/search", ctx -> {
+        app.get("/v1/coins/search", ctx -> {
             String query = ctx.queryParam("query");
             if (query != null && !query.trim().isEmpty()) {
                 List<Coin> searchResults = coinCache.searchCoins(query);
