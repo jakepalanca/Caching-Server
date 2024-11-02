@@ -120,24 +120,26 @@ public class CryptoCacheApplication {
             String idsParam = ctx.queryParam("ids");
             String dataType = ctx.queryParam("data_type");
             Optional<String> timeInterval = Optional.ofNullable(ctx.queryParam("time_interval"));
-            String xHeightChartViewParam = ctx.queryParam("x_height_chart_view");
-            String yWidthChartViewParam = ctx.queryParam("y_width_chart_view");
+            String chartWidthParam = ctx.queryParam("chart_width"); // Renamed
+            String chartHeightParam = ctx.queryParam("chart_height"); // Renamed
 
-            if (!validateInputs(idsParam, dataType, timeInterval, xHeightChartViewParam, yWidthChartViewParam)) {
+            if (!validateInputs(idsParam, dataType, timeInterval, chartWidthParam, chartHeightParam)) {
                 throw new HttpResponseException(400, "Bad Request: Invalid input parameters.");
             }
 
-            int xHeightScreen;
-            int yWidthScreen;
+            int chartWidth;
+            int chartHeight;
             try {
-                double xHeightScreenDouble = Double.parseDouble(xHeightChartViewParam);
-                xHeightScreen = (int) xHeightScreenDouble;
+                double chartWidthDouble = Double.parseDouble(chartWidthParam);
+                chartWidth = (int) chartWidthDouble;
 
-                double yWidthScreenDouble = Double.parseDouble(yWidthChartViewParam);
-                yWidthScreen = (int) yWidthScreenDouble;
+                double chartHeightDouble = Double.parseDouble(chartHeightParam);
+                chartHeight = (int) chartHeightDouble;
             } catch (NumberFormatException e) {
-                throw new HttpResponseException(400, "Bad Request: Screen dimensions must be valid numbers.");
+                throw new HttpResponseException(400, "Bad Request: Chart dimensions must be valid numbers.");
             }
+
+            logger.info("Chart Width: {}, Chart Height: {}", chartWidth, chartHeight); // Added logging
 
             List<String> coinIds = Arrays.asList(idsParam.split(","));
             List<Coin> coins = coinCache.getCoinsByIds(coinIds);
@@ -146,11 +148,13 @@ public class CryptoCacheApplication {
                 throw new HttpResponseException(404, "No coins found for the provided IDs.");
             }
 
-            List<Bubble> bubbles = bubbleService.createBubbles(coins, dataType, timeInterval.orElse(null), yWidthScreen, xHeightScreen);
+            // Pass width first, then height
+            List<Bubble> bubbles = bubbleService.createBubbles(coins, dataType, timeInterval.orElse(null), chartWidth, chartHeight);
 
             ctx.json(bubbles);
             logger.info("Returned {} bubbles for /v1/bubbles/list.", bubbles.size());
         });
+
 
         app.get("/v1/coins/all", ctx -> {
             List<Coin> allCoins = coinCache.getAllCoins();
@@ -253,7 +257,7 @@ public class CryptoCacheApplication {
      * @param yWidthScreenParam  the width of the screen in pixels
      * @return {@code true} if all inputs are valid; {@code false} otherwise
      */
-    private static boolean validateInputs(String idsParam, String dataType, Optional<String> timeInterval, String xHeightScreenParam, String yWidthScreenParam) {
+    private static boolean validateInputs(String idsParam, String dataType, Optional<String> timeInterval, String chartWidthParam, String chartHeightParam) {
         if (idsParam == null || idsParam.trim().isEmpty()) {
             logger.warn("Validation failed: 'ids' parameter is missing or empty.");
             return false;
@@ -270,23 +274,24 @@ public class CryptoCacheApplication {
             return false;
         }
 
-        if (xHeightScreenParam == null || yWidthScreenParam == null) {
-            logger.warn("Validation failed: Screen dimension parameters are missing.");
+        if (chartWidthParam == null || chartHeightParam == null) {
+            logger.warn("Validation failed: Chart dimension parameters are missing.");
             return false;
         }
 
         try {
-            int xHeight = Integer.parseInt(xHeightScreenParam);
-            int yWidth = Integer.parseInt(yWidthScreenParam);
-            if (xHeight <= 0 || yWidth <= 0) {
-                logger.warn("Validation failed: Screen dimensions must be positive integers.");
+            int chartWidth = Integer.parseInt(chartWidthParam);
+            int chartHeight = Integer.parseInt(chartHeightParam);
+            if (chartWidth <= 0 || chartHeight <= 0) {
+                logger.warn("Validation failed: Chart dimensions must be positive integers.");
                 return false;
             }
         } catch (NumberFormatException e) {
-            logger.warn("Validation failed: Screen dimensions must be valid integers.");
+            logger.warn("Validation failed: Chart dimensions must be valid integers.");
             return false;
         }
 
         return true;
     }
+
 }

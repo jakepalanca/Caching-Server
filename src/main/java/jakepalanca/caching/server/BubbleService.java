@@ -33,11 +33,11 @@ public class BubbleService {
      * @param coins        the list of {@code Coin} objects to be converted into bubbles
      * @param dataType     the data type for calculating bubble size
      * @param timeInterval the time interval for data types that require it
-     * @param screenHeight the height of the screen for positioning bubbles
-     * @param screenWidth  the width of the screen for positioning bubbles
+     * @param chartHeight the height of the screen for positioning bubbles
+     * @param chartWidth  the width of the screen for positioning bubbles
      * @return             a list of {@code Bubble} objects
      */
-    public List<Bubble> createBubbles(List<Coin> coins, String dataType, String timeInterval, int screenHeight, int screenWidth) {
+    public List<Bubble> createBubbles(List<Coin> coins, String dataType, String timeInterval, int chartWidth, int chartHeight) {
         if (!VALID_DATA_TYPES.contains(dataType)) {
             logger.warn("Invalid data type provided: {}", dataType);
             return new ArrayList<>();
@@ -97,7 +97,7 @@ public class BubbleService {
         }
 
         // Perform circle packing
-        PackingResult<Packable> packingResult = Packing.packCircles(screenWidth, screenHeight, new ArrayList<>(bubbles), MAX_PACKING_ITERATIONS);
+        PackingResult<Packable> packingResult = Packing.packCircles(chartWidth, chartHeight, new ArrayList<>(bubbles), MAX_PACKING_ITERATIONS);
 
         // Extract packed bubbles with updated positions and radii
 
@@ -105,6 +105,7 @@ public class BubbleService {
                 .map(packable -> (Bubble) packable)
                 .collect(Collectors.toList());
     }
+
 
     /**
      * Distributes normalized values evenly when all data values are identical.
