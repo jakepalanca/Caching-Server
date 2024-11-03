@@ -58,6 +58,8 @@ public class Coin implements Serializable {
     private String atlDate;
     private Roi roi;
     private String lastUpdated;
+    private String lowerCaseName;
+    private String lowerCaseSymbol;
 
     /**
      * Default constructor for deserialization purposes.
@@ -86,9 +88,10 @@ public class Coin implements Serializable {
     @JsonProperty("symbol")
     public void setSymbol(String symbol) {
         this.symbol = symbol;
+        this.lowerCaseSymbol = (symbol != null) ? symbol.toLowerCase() : "";
     }
 
-    @JsonProperty("name")
+        @JsonProperty("name")
     public String getName() {
         return name;
     }
@@ -96,6 +99,7 @@ public class Coin implements Serializable {
     @JsonProperty("name")
     public void setName(String name) {
         this.name = name;
+        this.lowerCaseName = (name != null) ? name.toLowerCase() : "";
     }
 
     @JsonProperty("image")
@@ -412,5 +416,14 @@ public class Coin implements Serializable {
     @Override
     public int hashCode() {
         return Objects.hash(coinId);
+    }
+
+    // not necessary in json response
+    String getLowerCaseName() {
+        return lowerCaseName;
+    }
+    // not necessary in json response
+    String getLowerCaseSymbol() {
+        return lowerCaseSymbol;
     }
 }

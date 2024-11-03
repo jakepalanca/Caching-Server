@@ -147,22 +147,82 @@ public class CoinCache implements Serializable {
     }
 
     /**
-     * Searches for coins in the cache that match the query string based on Levenshtein distance.
-     * This method supports fuzzy searching by considering both coin ID and coin name.
+     * Searches for coins in the cache that match the query string based on a scoring system.
+     * The search considers both the coin's name and symbol, supporting exact, partial, and fuzzy matches.
      *
      * @param query the query string to search for
-     * @return      a list of coins that match the query string within a threshold distance
+     * @return      a list of coins that match the query string, sorted by relevance
      */
     public List<Coin> searchCoins(String query) {
         LevenshteinDistance levenshtein = new LevenshteinDistance();
         String normalizedQuery = query.toLowerCase();
+        int fuzzyThreshold = 3;
 
-        // Threshold for fuzzy search
-        int threshold = 3;
+        List<SearchResult> results = new ArrayList<>();
 
-        return coins.stream()
-                .filter(coin -> isMatch(coin, normalizedQuery, levenshtein, threshold))
+        for (Coin coin : coins) {
+            int score = 0;
+
+            // Exact Match on Name
+            if (coin.getName().equalsIgnoreCase(query)) {
+                score = 100;
+            }
+            // Exact Match on Symbol
+            else if (coin.getSymbol().equalsIgnoreCase(query)) {
+                score = 95;
+            }
+            // Partial Match on Name
+            else if (coin.getLowerCaseName().contains(normalizedQuery)) {
+                score = 80;
+            }
+            // Partial Match on Symbol
+            else if (coin.getLowerCaseSymbol().contains(normalizedQuery)) {
+                score = 75;
+            }
+            // Fuzzy Match on Name
+            else {
+                int nameDistance = levenshtein.apply(coin.getLowerCaseName(), normalizedQuery);
+                int symbolDistance = levenshtein.apply(coin.getLowerCaseSymbol(), normalizedQuery);
+
+                if (nameDistance <= fuzzyThreshold || symbolDistance <= fuzzyThreshold) {
+                    // Assign score based on proximity
+                    int minDistance = Math.min(nameDistance, symbolDistance);
+                    score = 50 - minDistance; // Closer matches get higher scores within fuzzy range
+                }
+            }
+
+            if (score > 0) {
+                results.add(new SearchResult(coin, score));
+            }
+        }
+
+        // Sort results by score descending, then by market cap rank ascending
+        return results.stream()
+                .sorted(Comparator.comparingInt(SearchResult::getScore).reversed()
+                        .thenComparingInt(sr -> sr.getCoin().getMarketCapRank()))
+                .map(SearchResult::getCoin)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Internal class to hold search results with scores.
+     */
+    private static class SearchResult {
+        private final Coin coin;
+        private final int score;
+
+        public SearchResult(Coin coin, int score) {
+            this.coin = coin;
+            this.score = score;
+        }
+
+        public Coin getCoin() {
+            return coin;
+        }
+
+        public int getScore() {
+            return score;
+        }
     }
 
     /**
@@ -191,8 +251,12 @@ public class CoinCache implements Serializable {
      */
     public List<Coin> getTop100Coins() {
         return coins.stream()
+                // Optional: Exclude coins with rank 0 or negative ranks
+                .filter(coin -> coin.getMarketCapRank() >= 1)
+                // Sort coins by market capitalization rank in ascending order
                 .sorted(Comparator.comparingInt(Coin::getMarketCapRank))
-                .limit(100)
+                // Limit the result to the top 101 coins
+                .limit(101)
                 .collect(Collectors.toList());
     }
 

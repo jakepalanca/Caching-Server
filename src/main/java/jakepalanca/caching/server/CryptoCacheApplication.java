@@ -253,8 +253,8 @@ public class CryptoCacheApplication {
      * @param idsParam           the comma-separated list of coin IDs
      * @param dataType           the data type for bubble creation (e.g., "market_cap", "price_change")
      * @param timeInterval       the optional time interval for price change calculations
-     * @param xHeightScreenParam the height of the screen in pixels
-     * @param yWidthScreenParam  the width of the screen in pixels
+     * @param chartHeightParam the height of the screen in pixels
+     * @param chartWidthParam  the width of the screen in pixels
      * @return {@code true} if all inputs are valid; {@code false} otherwise
      */
     private static boolean validateInputs(String idsParam, String dataType, Optional<String> timeInterval, String chartWidthParam, String chartHeightParam) {
