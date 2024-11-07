@@ -80,7 +80,6 @@ Fetches a list of bubbles (coins) with data based on the specified parameters.
   - `market_cap`
   - `total_volume`
   - `price_change`
-  - `sentiment`
   - `rank`
   - `market_cap_change_percentage_24hr`
   - `total_supply`

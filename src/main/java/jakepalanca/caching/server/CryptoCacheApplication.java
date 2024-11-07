@@ -120,26 +120,15 @@ public class CryptoCacheApplication {
             String idsParam = ctx.queryParam("ids");
             String dataType = ctx.queryParam("data_type");
             Optional<String> timeInterval = Optional.ofNullable(ctx.queryParam("time_interval"));
-            String chartWidthParam = ctx.queryParam("chart_width"); // Renamed
-            String chartHeightParam = ctx.queryParam("chart_height"); // Renamed
+            String chartWidthParam = ctx.queryParam("chart_width");
+            String chartHeightParam = ctx.queryParam("chart_height");
 
             if (!validateInputs(idsParam, dataType, timeInterval, chartWidthParam, chartHeightParam)) {
                 throw new HttpResponseException(400, "Bad Request: Invalid input parameters.");
             }
 
-            int chartWidth;
-            int chartHeight;
-            try {
-                double chartWidthDouble = Double.parseDouble(chartWidthParam);
-                chartWidth = (int) chartWidthDouble;
-
-                double chartHeightDouble = Double.parseDouble(chartHeightParam);
-                chartHeight = (int) chartHeightDouble;
-            } catch (NumberFormatException e) {
-                throw new HttpResponseException(400, "Bad Request: Chart dimensions must be valid numbers.");
-            }
-
-            logger.info("Chart Width: {}, Chart Height: {}", chartWidth, chartHeight); // Added logging
+            int chartWidth = Integer.parseInt(chartWidthParam);
+            int chartHeight = Integer.parseInt(chartHeightParam);
 
             List<String> coinIds = Arrays.asList(idsParam.split(","));
             List<Coin> coins = coinCache.getCoinsByIds(coinIds);
@@ -148,11 +137,8 @@ public class CryptoCacheApplication {
                 throw new HttpResponseException(404, "No coins found for the provided IDs.");
             }
 
-            // Pass width first, then height
             List<Bubble> bubbles = bubbleService.createBubbles(coins, dataType, timeInterval.orElse(null), chartWidth, chartHeight);
-
             ctx.json(bubbles);
-            logger.info("Returned {} bubbles for /v1/bubbles/list.", bubbles.size());
         });
 
 
