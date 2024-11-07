@@ -47,10 +47,10 @@ public class BubbleService {
     public BubbleService() {
         // Initialize the AWS Lambda client
         this.awsLambda = LambdaClient.builder()
-                .region(Region.US_WEST_2) // Specify your AWS region
+                .region(Region.US_EAST_1) // Specify your AWS region
                 .build();
         this.objectMapper = new ObjectMapper();
-        this.lambdaFunctionName = "BubblePackingFunction"; // Replace with your Lambda function's name
+        this.lambdaFunctionName = "bubbleService"; // Replace with your Lambda function's name
     }
 
     /**
