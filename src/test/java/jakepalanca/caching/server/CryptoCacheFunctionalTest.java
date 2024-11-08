@@ -1,6 +1,7 @@
 // ----- CryptoCacheFunctionalTest.java -----
 package jakepalanca.caching.server;
 
+import jakepalanca.common.Coin;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

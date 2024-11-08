@@ -1,6 +1,7 @@
 // ----- CoinUpdateJob.java -----
 package jakepalanca.caching.server;
 
+import jakepalanca.common.Coin;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;

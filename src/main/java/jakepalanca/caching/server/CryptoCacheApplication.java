@@ -4,6 +4,8 @@ package jakepalanca.caching.server;
 import io.javalin.Javalin;
 import io.javalin.http.HttpResponseException;
 import io.javalin.json.JavalinJackson;
+import jakepalanca.common.Bubble;
+import jakepalanca.common.Coin;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.slf4j.Logger;

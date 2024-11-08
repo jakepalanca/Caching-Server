@@ -1,6 +1,7 @@
 // ----- CoinGeckoClientTest.java -----
 package jakepalanca.caching.server;
 
+import jakepalanca.common.Coin;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
