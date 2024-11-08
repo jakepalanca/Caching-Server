@@ -115,8 +115,8 @@ public class CoinCacheTest {
         // Sort coins by market cap rank to ensure consistent order
         coins.sort(Comparator.comparingInt(Coin::getMarketCapRank));
 
-        assertThat(coins.get(0).getCoinId()).isEqualTo("bitcoin");
-        assertThat(coins.get(1).getCoinId()).isEqualTo("ethereum");
+        assertThat(coins.get(0).getId()).isEqualTo("bitcoin");
+        assertThat(coins.get(1).getId()).isEqualTo("ethereum");
 
         logger.info("Test completed successfully, cache file and contents are as expected.");
     }
@@ -194,7 +194,7 @@ public class CoinCacheTest {
      */
     private Coin createCoin(String coinId, String symbol, String name, double currentPrice, int marketCapRank) {
         Coin coin = new Coin();
-        coin.setCoinId(coinId);
+        coin.setId(coinId);
         coin.setSymbol(symbol);
         coin.setName(name);
         coin.setImage("https://example.com/" + coinId + ".png");

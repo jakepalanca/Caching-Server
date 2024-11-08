@@ -1,7 +1,6 @@
 // ----- CoinUpdateJob.java -----
 package jakepalanca.caching.server;
 
-import org.apache.hc.core5.http.ParseException;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
@@ -62,11 +61,11 @@ public class CoinUpdateJob implements Job {
             // Step 2: Identify Remaining Coins in Cache (beyond top 1000)
             List<Coin> currentCacheCoins = coinCache.getAllCoins();
             Set<String> topCoinIds = topCoins.stream()
-                    .map(Coin::getCoinId)
+                    .map(Coin::getId)
                     .collect(Collectors.toSet());
 
             List<String> remainingCoinIds = currentCacheCoins.stream()
-                    .map(Coin::getCoinId)
+                    .map(Coin::getId)
                     .filter(id -> !topCoinIds.contains(id))
                     .collect(Collectors.toList());
 

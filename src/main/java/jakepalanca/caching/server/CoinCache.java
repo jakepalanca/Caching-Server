@@ -85,14 +85,14 @@ public class CoinCache implements Serializable {
 
         // Create a map from coinId to Coin for quick lookup and to eliminate duplicates
         Map<String, Coin> newCoinMap = newCoins.stream()
-                .collect(Collectors.toMap(Coin::getCoinId, coin -> coin, (coin1, coin2) -> coin1));
+                .collect(Collectors.toMap(Coin::getId, coin -> coin, (coin1, coin2) -> coin1));
 
         // Iterate over existing coins and update them if they exist in the newCoinMap
         for (int i = 0; i < coins.size(); i++) {
             Coin existingCoin = coins.get(i);
-            if (newCoinMap.containsKey(existingCoin.getCoinId())) {
-                coins.set(i, newCoinMap.get(existingCoin.getCoinId()));
-                newCoinMap.remove(existingCoin.getCoinId());
+            if (newCoinMap.containsKey(existingCoin.getId())) {
+                coins.set(i, newCoinMap.get(existingCoin.getId()));
+                newCoinMap.remove(existingCoin.getId());
             }
         }
 
@@ -238,7 +238,7 @@ public class CoinCache implements Serializable {
     private boolean isMatch(Coin coin, String query, LevenshteinDistance levenshtein, int threshold) {
         String coinName = coin.getName().toLowerCase();
 
-        int idDistance = levenshtein.apply(coin.getCoinId(), query);
+        int idDistance = levenshtein.apply(coin.getId(), query);
         int nameDistance = levenshtein.apply(coinName, query);
 
         return idDistance <= threshold || nameDistance <= threshold;
@@ -268,7 +268,7 @@ public class CoinCache implements Serializable {
      */
     public List<Coin> getCoinsByIds(List<String> ids) {
         return coins.stream()
-                .filter(coin -> ids.contains(coin.getCoinId()))
+                .filter(coin -> ids.contains(coin.getId()))
                 .collect(Collectors.toList());
     }
 

@@ -26,7 +26,7 @@ public class Coin implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private String coinId;
+    private String id; // Renamed from coinId to align with Jackson's naming conventions
     private String symbol;
     private String name;
     private String image;
@@ -56,7 +56,7 @@ public class Coin implements Serializable {
     private double atl;
     private double atlChangePercentage;
     private String atlDate;
-    private Roi roi;
+    private Roi roi; // Updated package to jakepalanca.bubblechart.Roi
     private String lastUpdated;
     private String lowerCaseName;
     private String lowerCaseSymbol;
@@ -71,13 +71,13 @@ public class Coin implements Serializable {
     // Getters and Setters with @JsonProperty annotations
 
     @JsonProperty("id")
-    public String getCoinId() {
-        return coinId;
+    public String getId() { // Renamed from getCoinId()
+        return id;
     }
 
     @JsonProperty("id")
-    public void setCoinId(String coinId) {
-        this.coinId = coinId;
+    public void setId(String id) { // Renamed from setCoinId()
+        this.id = id;
     }
 
     @JsonProperty("symbol")
@@ -91,7 +91,7 @@ public class Coin implements Serializable {
         this.lowerCaseSymbol = (symbol != null) ? symbol.toLowerCase() : "";
     }
 
-        @JsonProperty("name")
+    @JsonProperty("name")
     public String getName() {
         return name;
     }
@@ -393,10 +393,10 @@ public class Coin implements Serializable {
     }
 
     /**
-     * Overrides the {@code equals} method to compare coins based on their {@code coinId}.
+     * Overrides the {@code equals} method to compare coins based on their {@code id}.
      *
      * @param o the object to compare with
-     * @return {@code true} if the {@code coinId}s are equal; {@code false} otherwise
+     * @return {@code true} if the {@code id}s are equal; {@code false} otherwise
      */
     @Override
     public boolean equals(Object o) {
@@ -405,24 +405,25 @@ public class Coin implements Serializable {
 
         Coin coin = (Coin) o;
 
-        return Objects.equals(coinId, coin.coinId);
+        return Objects.equals(id, coin.id);
     }
 
     /**
-     * Overrides the {@code hashCode} method to generate hash based on {@code coinId}.
+     * Overrides the {@code hashCode} method to generate hash based on {@code id}.
      *
-     * @return the hash code based on {@code coinId}
+     * @return the hash code based on {@code id}
      */
     @Override
     public int hashCode() {
-        return Objects.hash(coinId);
+        return Objects.hash(id);
     }
 
-    // not necessary in json response
+    // Not necessary in JSON response
     String getLowerCaseName() {
         return lowerCaseName;
     }
-    // not necessary in json response
+
+    // Not necessary in JSON response
     String getLowerCaseSymbol() {
         return lowerCaseSymbol;
     }

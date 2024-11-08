@@ -28,7 +28,7 @@ public class CoinGeckoClientTest {
 
         // Create a mock Coin using setters instead of the Builder pattern
         Coin mockCoin = new Coin();
-        mockCoin.setCoinId("ethereum");
+        mockCoin.setId("ethereum");
         mockCoin.setSymbol("eth");
         mockCoin.setName("Ethereum");
         mockCoin.setImage("https://example.com/ethereum.png");
@@ -70,7 +70,7 @@ public class CoinGeckoClientTest {
         Coin coin = coins.get(0);
 
         // Assert all properties of the Coin object
-        assertThat(coin.getCoinId()).isEqualTo("ethereum");
+        assertThat(coin.getId()).isEqualTo("ethereum");
         assertThat(coin.getSymbol()).isEqualTo("eth");
         assertThat(coin.getName()).isEqualTo("Ethereum");
         assertThat(coin.getImage()).isEqualTo("https://example.com/ethereum.png");
