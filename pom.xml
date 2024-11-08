@@ -35,7 +35,7 @@
     <dependency>
       <groupId>io.github.jakepalanca.common</groupId>
       <artifactId>common-models</artifactId>
-      <version>1.0.3</version>
+      <version>1.0.7</version>
     </dependency>
 
     <!-- Javalin -->
