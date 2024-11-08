@@ -1,7 +1,12 @@
 package jakepalanca.caching.server;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import jakepalanca.common.Bubble;
 import jakepalanca.common.Coin;
 import org.slf4j.Logger;
@@ -52,6 +57,18 @@ public class BubbleService {
                 .region(Region.US_EAST_1) // Specify your AWS region
                 .build();
         this.objectMapper = new ObjectMapper();
+
+        // Configure visibility to use fields
+        objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
+        objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+
+        // Set the naming strategy to SNAKE_CASE
+        objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+
+        // Disable features as needed
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+
         this.lambdaFunctionName = "bubbleService"; // Replace with your Lambda function's name
     }
 

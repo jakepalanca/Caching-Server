@@ -1,11 +1,8 @@
-// ----- main/java/jakepalanca/caching/server/CryptoCacheApplication.java -----
 package jakepalanca.caching.server;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.*;
 import io.javalin.Javalin;
 import io.javalin.http.HttpResponseException;
 import io.javalin.json.JavalinJackson;
@@ -100,6 +97,9 @@ public class CryptoCacheApplication {
         objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
         objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
 
+        // Set the naming strategy to SNAKE_CASE
+        objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+
         // Disable features as needed
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
@@ -114,6 +114,8 @@ public class CryptoCacheApplication {
             mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
             mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
             mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+            // Set the naming strategy to SNAKE_CASE
+            mapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
             // Register modules if necessary
             // mapper.registerModule(new JavaTimeModule());
         });
