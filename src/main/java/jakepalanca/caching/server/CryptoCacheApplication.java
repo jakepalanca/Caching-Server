@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.*;
 import io.javalin.Javalin;
 import io.javalin.http.HttpResponseException;
 import io.javalin.json.JavalinJackson;
-
 import jakepalanca.common.Bubble;
 import jakepalanca.common.Coin;
 import org.quartz.*;
@@ -23,20 +22,10 @@ import static org.quartz.JobBuilder.newJob;
 import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
 import static org.quartz.TriggerBuilder.newTrigger;
 
-
 /**
  * The {@code CryptoCacheApplication} class serves as the entry point to the application.
  * It initializes the CoinCache, sets up the Javalin server,
  * and schedules a job to update the cache periodically.
- *
- * <p>The server provides the following endpoints:</p>
- * <ul>
- *   <li>{@code /health} - Health check endpoint</li>
- *   <li>{@code /v1/bubbles/list} - Returns a list of bubbles based on the provided parameters</li>
- *   <li>{@code /v1/coins/all} - Returns all coins in the cache</li>
- *   <li>{@code /v1/coins/top100} - Returns the top 100 coins in the cache</li>
- *   <li>{@code /v1/coins/search} - Performs a search for coins based on a query string</li>
- * </ul>
  */
 public class CryptoCacheApplication {
 
@@ -53,7 +42,7 @@ public class CryptoCacheApplication {
     public static void main(String[] args) {
 
         // Define the directory where the cache will be stored
-        String cacheDirectory = "~/cache/";
+        String cacheDirectory = System.getProperty("user.home") + "/cache/";
 
         // Create a production CoinCache instance
         CoinCache coinCache = new CoinCache(cacheDirectory, false);
@@ -112,12 +101,9 @@ public class CryptoCacheApplication {
             // Apply the same configurations to 'mapper'
             mapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
             mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+            mapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
             mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
             mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-            // Set the naming strategy to SNAKE_CASE
-            mapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
-            // Register modules if necessary
-            // mapper.registerModule(new JavaTimeModule());
         });
 
         // Create and configure the Javalin server
@@ -316,5 +302,4 @@ public class CryptoCacheApplication {
 
         return true;
     }
-
 }

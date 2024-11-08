@@ -204,8 +204,8 @@ public class CoinCacheTest {
         coin.setMarketCap(1000000L * marketCapRank);
         coin.setTotalVolume(500000L * marketCapRank);
         coin.setPriceChangePercentage24h(1.0 * marketCapRank);
-        coin.setPriceChangePercentage1h(0.5 * marketCapRank);
-        coin.setPriceChangePercentage7d(7.0 * marketCapRank);
+        coin.setPriceChangePercentage1hInCurrency(0.5 * marketCapRank);
+        coin.setPriceChangePercentage7dInCurrency(7.0 * marketCapRank);
         coin.setLastUpdated("2024-08-25T00:00:00Z");
         return coin;
     }
