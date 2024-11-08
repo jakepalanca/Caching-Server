@@ -2,6 +2,8 @@ package jakepalanca.caching.server;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakepalanca.common.Bubble;
+import jakepalanca.common.Coin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;

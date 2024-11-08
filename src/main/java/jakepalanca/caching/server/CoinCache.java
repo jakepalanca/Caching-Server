@@ -1,12 +1,16 @@
 // ----- CoinCache.java -----
 package jakepalanca.caching.server;
 
+import jakepalanca.common.Coin;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
@@ -176,7 +180,7 @@ public class CoinCache implements Serializable {
                 score = 80;
             }
             // Partial Match on Symbol
-            else if (coin.getLowerCaseSymbol().contains(normalizedQuery)) {
+            else if (coin.getLowerCaseName().contains(normalizedQuery)) {
                 score = 75;
             }
             // Fuzzy Match on Name
