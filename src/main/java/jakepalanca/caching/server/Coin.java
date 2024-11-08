@@ -30,33 +30,33 @@ public class Coin implements Serializable {
     private String symbol;
     private String name;
     private String image;
-    private double currentPrice;
-    private long marketCap;
-    private int marketCapRank;
+    private Double currentPrice;
+    private Long marketCap;
+    private Integer marketCapRank;
     private Long fullyDilutedValuation;
-    private long totalVolume;
-    private double high24h;
-    private double low24h;
-    private double priceChange24h;
-    private double priceChangePercentage24h;
-    private double priceChangePercentage1h;
-    private double priceChangePercentage7d;
-    private double priceChangePercentage14d;
-    private double priceChangePercentage30d;
-    private double priceChangePercentage200d;
-    private double priceChangePercentage1y;
-    private long marketCapChange24h;
-    private double marketCapChangePercentage24h;
-    private double circulatingSupply;
-    private double totalSupply;
-    private double maxSupply;
-    private double ath;
-    private double athChangePercentage;
+    private Long totalVolume;
+    private Double high24h;
+    private Double low24h;
+    private Double priceChange24h;
+    private Double priceChangePercentage24h;
+    private Double priceChangePercentage1h;
+    private Double priceChangePercentage7d;
+    private Double priceChangePercentage14d;
+    private Double priceChangePercentage30d;
+    private Double priceChangePercentage200d;
+    private Double priceChangePercentage1y;
+    private Long marketCapChange24h;
+    private Double marketCapChangePercentage24h;
+    private Double circulatingSupply;
+    private Double totalSupply;
+    private Double maxSupply;
+    private Double ath;
+    private Double athChangePercentage;
     private String athDate;
-    private double atl;
-    private double atlChangePercentage;
+    private Double atl;
+    private Double atlChangePercentage;
     private String atlDate;
-    private Roi roi; // Updated package to jakepalanca.bubblechart.Roi
+    private Roi roi;
     private String lastUpdated;
     private String lowerCaseName;
     private String lowerCaseSymbol;
@@ -113,32 +113,32 @@ public class Coin implements Serializable {
     }
 
     @JsonProperty("current_price")
-    public double getCurrentPrice() {
+    public Double getCurrentPrice() {
         return currentPrice;
     }
 
     @JsonProperty("current_price")
-    public void setCurrentPrice(double currentPrice) {
+    public void setCurrentPrice(Double currentPrice) {
         this.currentPrice = currentPrice;
     }
 
     @JsonProperty("market_cap")
-    public long getMarketCap() {
+    public Long getMarketCap() {
         return marketCap;
     }
 
     @JsonProperty("market_cap")
-    public void setMarketCap(long marketCap) {
+    public void setMarketCap(Long marketCap) {
         this.marketCap = marketCap;
     }
 
     @JsonProperty("market_cap_rank")
-    public int getMarketCapRank() {
+    public Integer getMarketCapRank() {
         return marketCapRank;
     }
 
     @JsonProperty("market_cap_rank")
-    public void setMarketCapRank(int marketCapRank) {
+    public void setMarketCapRank(Integer marketCapRank) {
         this.marketCapRank = marketCapRank;
     }
 
@@ -153,182 +153,182 @@ public class Coin implements Serializable {
     }
 
     @JsonProperty("total_volume")
-    public long getTotalVolume() {
+    public Long getTotalVolume() {
         return totalVolume;
     }
 
     @JsonProperty("total_volume")
-    public void setTotalVolume(long totalVolume) {
+    public void setTotalVolume(Long totalVolume) {
         this.totalVolume = totalVolume;
     }
 
     @JsonProperty("high_24h")
-    public double getHigh24h() {
+    public Double getHigh24h() {
         return high24h;
     }
 
     @JsonProperty("high_24h")
-    public void setHigh24h(double high24h) {
+    public void setHigh24h(Double high24h) {
         this.high24h = high24h;
     }
 
     @JsonProperty("low_24h")
-    public double getLow24h() {
+    public Double getLow24h() {
         return low24h;
     }
 
     @JsonProperty("low_24h")
-    public void setLow24h(double low24h) {
+    public void setLow24h(Double low24h) {
         this.low24h = low24h;
     }
 
     @JsonProperty("price_change_24h")
-    public double getPriceChange24h() {
+    public Double getPriceChange24h() {
         return priceChange24h;
     }
 
     @JsonProperty("price_change_24h")
-    public void setPriceChange24h(double priceChange24h) {
+    public void setPriceChange24h(Double priceChange24h) {
         this.priceChange24h = priceChange24h;
     }
 
     @JsonProperty("price_change_percentage_24h")
-    public double getPriceChangePercentage24h() {
+    public Double getPriceChangePercentage24h() {
         return priceChangePercentage24h;
     }
 
     @JsonProperty("price_change_percentage_24h")
-    public void setPriceChangePercentage24h(double priceChangePercentage24h) {
+    public void setPriceChangePercentage24h(Double priceChangePercentage24h) {
         this.priceChangePercentage24h = priceChangePercentage24h;
     }
 
     @JsonProperty("price_change_percentage_1h_in_currency")
-    public double getPriceChangePercentage1h() {
+    public Double getPriceChangePercentage1h() {
         return priceChangePercentage1h;
     }
 
     @JsonProperty("price_change_percentage_1h_in_currency")
-    public void setPriceChangePercentage1h(double priceChangePercentage1h) {
+    public void setPriceChangePercentage1h(Double priceChangePercentage1h) {
         this.priceChangePercentage1h = priceChangePercentage1h;
     }
 
     @JsonProperty("price_change_percentage_7d_in_currency")
-    public double getPriceChangePercentage7d() {
+    public Double getPriceChangePercentage7d() {
         return priceChangePercentage7d;
     }
 
     @JsonProperty("price_change_percentage_7d_in_currency")
-    public void setPriceChangePercentage7d(double priceChangePercentage7d) {
+    public void setPriceChangePercentage7d(Double priceChangePercentage7d) {
         this.priceChangePercentage7d = priceChangePercentage7d;
     }
 
     @JsonProperty("price_change_percentage_14d_in_currency")
-    public double getPriceChangePercentage14d() {
+    public Double getPriceChangePercentage14d() {
         return priceChangePercentage14d;
     }
 
     @JsonProperty("price_change_percentage_14d_in_currency")
-    public void setPriceChangePercentage14d(double priceChangePercentage14d) {
+    public void setPriceChangePercentage14d(Double priceChangePercentage14d) {
         this.priceChangePercentage14d = priceChangePercentage14d;
     }
 
     @JsonProperty("price_change_percentage_30d_in_currency")
-    public double getPriceChangePercentage30d() {
+    public Double getPriceChangePercentage30d() {
         return priceChangePercentage30d;
     }
 
     @JsonProperty("price_change_percentage_30d_in_currency")
-    public void setPriceChangePercentage30d(double priceChangePercentage30d) {
+    public void setPriceChangePercentage30d(Double priceChangePercentage30d) {
         this.priceChangePercentage30d = priceChangePercentage30d;
     }
 
     @JsonProperty("price_change_percentage_200d_in_currency")
-    public double getPriceChangePercentage200d() {
+    public Double getPriceChangePercentage200d() {
         return priceChangePercentage200d;
     }
 
     @JsonProperty("price_change_percentage_200d_in_currency")
-    public void setPriceChangePercentage200d(double priceChangePercentage200d) {
+    public void setPriceChangePercentage200d(Double priceChangePercentage200d) {
         this.priceChangePercentage200d = priceChangePercentage200d;
     }
 
     @JsonProperty("price_change_percentage_1y_in_currency")
-    public double getPriceChangePercentage1y() {
+    public Double getPriceChangePercentage1y() {
         return priceChangePercentage1y;
     }
 
     @JsonProperty("price_change_percentage_1y_in_currency")
-    public void setPriceChangePercentage1y(double priceChangePercentage1y) {
+    public void setPriceChangePercentage1y(Double priceChangePercentage1y) {
         this.priceChangePercentage1y = priceChangePercentage1y;
     }
 
     @JsonProperty("market_cap_change_24h")
-    public long getMarketCapChange24h() {
+    public Long getMarketCapChange24h() {
         return marketCapChange24h;
     }
 
     @JsonProperty("market_cap_change_24h")
-    public void setMarketCapChange24h(long marketCapChange24h) {
+    public void setMarketCapChange24h(Long marketCapChange24h) {
         this.marketCapChange24h = marketCapChange24h;
     }
 
     @JsonProperty("market_cap_change_percentage_24h")
-    public double getMarketCapChangePercentage24h() {
+    public Double getMarketCapChangePercentage24h() {
         return marketCapChangePercentage24h;
     }
 
     @JsonProperty("market_cap_change_percentage_24h")
-    public void setMarketCapChangePercentage24h(double marketCapChangePercentage24h) {
+    public void setMarketCapChangePercentage24h(Double marketCapChangePercentage24h) {
         this.marketCapChangePercentage24h = marketCapChangePercentage24h;
     }
 
     @JsonProperty("circulating_supply")
-    public double getCirculatingSupply() {
+    public Double getCirculatingSupply() {
         return circulatingSupply;
     }
 
     @JsonProperty("circulating_supply")
-    public void setCirculatingSupply(double circulatingSupply) {
+    public void setCirculatingSupply(Double circulatingSupply) {
         this.circulatingSupply = circulatingSupply;
     }
 
     @JsonProperty("total_supply")
-    public double getTotalSupply() {
+    public Double getTotalSupply() {
         return totalSupply;
     }
 
     @JsonProperty("total_supply")
-    public void setTotalSupply(double totalSupply) {
+    public void setTotalSupply(Double totalSupply) {
         this.totalSupply = totalSupply;
     }
 
     @JsonProperty("max_supply")
-    public double getMaxSupply() {
+    public Double getMaxSupply() {
         return maxSupply;
     }
 
     @JsonProperty("max_supply")
-    public void setMaxSupply(double maxSupply) {
+    public void setMaxSupply(Double maxSupply) {
         this.maxSupply = maxSupply;
     }
 
     @JsonProperty("ath")
-    public double getAth() {
+    public Double getAth() {
         return ath;
     }
 
     @JsonProperty("ath")
-    public void setAth(double ath) {
+    public void setAth(Double ath) {
         this.ath = ath;
     }
 
     @JsonProperty("ath_change_percentage")
-    public double getAthChangePercentage() {
+    public Double getAthChangePercentage() {
         return athChangePercentage;
     }
 
     @JsonProperty("ath_change_percentage")
-    public void setAthChangePercentage(double athChangePercentage) {
+    public void setAthChangePercentage(Double athChangePercentage) {
         this.athChangePercentage = athChangePercentage;
     }
 
@@ -343,22 +343,22 @@ public class Coin implements Serializable {
     }
 
     @JsonProperty("atl")
-    public double getAtl() {
+    public Double getAtl() {
         return atl;
     }
 
     @JsonProperty("atl")
-    public void setAtl(double atl) {
+    public void setAtl(Double atl) {
         this.atl = atl;
     }
 
     @JsonProperty("atl_change_percentage")
-    public double getAtlChangePercentage() {
+    public Double getAtlChangePercentage() {
         return atlChangePercentage;
     }
 
     @JsonProperty("atl_change_percentage")
-    public void setAtlChangePercentage(double atlChangePercentage) {
+    public void setAtlChangePercentage(Double atlChangePercentage) {
         this.atlChangePercentage = atlChangePercentage;
     }
 
