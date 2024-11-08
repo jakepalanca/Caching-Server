@@ -5,6 +5,7 @@ package jakepalanca.caching.server;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakepalanca.common.Coin;
 import org.apache.hc.client5.http.HttpHostConnectException;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
