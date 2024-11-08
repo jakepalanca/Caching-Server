@@ -1,9 +1,15 @@
 // ----- main/java/jakepalanca/caching/server/CryptoCacheApplication.java -----
 package jakepalanca.caching.server;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import io.javalin.Javalin;
 import io.javalin.http.HttpResponseException;
 import io.javalin.json.JavalinJackson;
+
 import jakepalanca.common.Bubble;
 import jakepalanca.common.Coin;
 import org.quartz.*;
@@ -19,6 +25,7 @@ import java.util.Properties;
 import static org.quartz.JobBuilder.newJob;
 import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
 import static org.quartz.TriggerBuilder.newTrigger;
+
 
 /**
  * The {@code CryptoCacheApplication} class serves as the entry point to the application.
@@ -85,9 +92,35 @@ public class CryptoCacheApplication {
      * @return the configured {@link Javalin} server instance
      */
     public static Javalin createServer(CoinCache coinCache) {
+
+        // Create and configure your ObjectMapper
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        // Configure visibility to use fields
+        objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
+        objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+
+        // Disable features as needed
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+
+        // Create a JavalinJackson instance
+        JavalinJackson jackson = new JavalinJackson();
+
+        // Use updateMapper to configure the ObjectMapper
+        jackson.updateMapper(mapper -> {
+            // Apply the same configurations to 'mapper'
+            mapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
+            mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+            // Register modules if necessary
+            // mapper.registerModule(new JavaTimeModule());
+        });
+
         // Create and configure the Javalin server
         Javalin app = Javalin.create(config -> {
-            config.jsonMapper(new JavalinJackson()); // Using Jackson for JSON serialization
+            config.jsonMapper(jackson);
         });
 
         // Global Exception Handling
