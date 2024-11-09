@@ -1,7 +1,6 @@
 package jakepalanca.caching.server;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -58,16 +57,15 @@ public class BubbleService {
                 .build();
         this.objectMapper = new ObjectMapper();
 
-        // Configure visibility to use fields
-        objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
-        objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
-
         // Set the naming strategy to SNAKE_CASE
         objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
 
         // Disable features as needed
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+
+        // Optionally, include non-null fields
+        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
         this.lambdaFunctionName = "bubbleService"; // Replace with your Lambda function's name
     }

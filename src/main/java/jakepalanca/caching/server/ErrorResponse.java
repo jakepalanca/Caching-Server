@@ -68,5 +68,4 @@ public class ErrorResponse {
         return timestamp;
     }
 
-    // No setter for timestamp to ensure it's set only once at creation
 }
