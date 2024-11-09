@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>jakepalanca.caching.server</groupId>
   <artifactId>jakepalanca.caching.server</artifactId>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
   <packaging>jar</packaging>
   <name>jakepalanca.caching.server</name>
   <url>http://maven.apache.org</url>
@@ -162,12 +162,6 @@
       <version>4.12.0</version>
       <scope>test</scope>
     </dependency>
-      <dependency>
-          <groupId>jakepalanca.common</groupId>
-          <artifactId>common-models</artifactId>
-          <version>1.0.0</version>
-          <scope>compile</scope>
-      </dependency>
   </dependencies>
   <build>
     <finalName>Caching-Server</finalName>
