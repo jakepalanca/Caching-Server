@@ -85,6 +85,17 @@ public class BubbleService {
      */
     public List<Bubble> createBubbles(List<Coin> coins, String dataType, String timeInterval, int chartWidth, int chartHeight) {
         try {
+            // Validate dataType and timeInterval
+            if (!VALID_DATA_TYPES.contains(dataType)) {
+                logger.error("Invalid dataType: {}", dataType);
+                throw new IllegalArgumentException("Invalid dataType: " + dataType);
+            }
+
+            if (dataType.equals("price_change") && (timeInterval == null || !VALID_TIME_INTERVALS.contains(timeInterval))) {
+                logger.error("Invalid timeInterval: {}", timeInterval);
+                throw new IllegalArgumentException("Invalid timeInterval: " + timeInterval);
+            }
+
             // Prepare the payload to send to the Lambda function
             Map<String, Object> payloadMap = new HashMap<>();
             payloadMap.put("coins", coins);
@@ -96,6 +107,8 @@ public class BubbleService {
             String payloadJson = objectMapper.writeValueAsString(payloadMap);
             SdkBytes payload = SdkBytes.fromUtf8String(payloadJson);
 
+            logger.debug("Payload sent to Lambda: {}", payloadJson);
+
             // Create the invoke request
             InvokeRequest invokeRequest = InvokeRequest.builder()
                     .functionName(lambdaFunctionName)
@@ -105,11 +118,28 @@ public class BubbleService {
             // Invoke the Lambda function
             InvokeResponse invokeResponse = awsLambda.invoke(invokeRequest);
 
+            // Check for successful invocation
+            if (invokeResponse.statusCode() != 200) {
+                logger.error("Lambda invocation failed with status code: {}", invokeResponse.statusCode());
+                throw new RuntimeException("Lambda invocation failed");
+            }
+
             // Read the response
             String responseJson = invokeResponse.payload().asUtf8String();
 
+            logger.debug("Response from Lambda: {}", responseJson);
+
             // Deserialize the response into a list of Bubble objects
-            return objectMapper.readValue(responseJson, new TypeReference<List<Bubble>>() {});
+            List<Bubble> bubbles = objectMapper.readValue(responseJson, new TypeReference<List<Bubble>>() {});
+
+            logger.debug("Deserialized Bubbles: {}", objectMapper.writeValueAsString(bubbles));
+
+            // Additional validation: Ensure bubbles are not null and contain valid data
+            if (bubbles == null || bubbles.isEmpty()) {
+                logger.warn("No bubbles received from Lambda.");
+            }
+
+            return bubbles;
 
         } catch (LambdaException e) {
             logger.error("Error invoking Lambda function: {}", e.getMessage(), e);
@@ -119,4 +149,5 @@ public class BubbleService {
             throw new RuntimeException("An unexpected error occurred", e);
         }
     }
+
 }
