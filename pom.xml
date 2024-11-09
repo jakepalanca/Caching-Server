@@ -28,7 +28,7 @@
     <dependency>
       <groupId>io.github.jakepalanca</groupId>
       <artifactId>circle-packer</artifactId>
-      <version>1.0.0</version>
+      <version>1.0.2</version>
     </dependency>
 
     <!-- My Models (Bubble, Coin, ROI) -->
