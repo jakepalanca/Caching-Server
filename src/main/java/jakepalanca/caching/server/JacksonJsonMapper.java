@@ -1,13 +1,19 @@
 package jakepalanca.caching.server;
 
-import io.javalin.json.JsonMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import io.javalin.json.JsonMapper;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.reflect.Type;
+import java.util.stream.Stream;
 
 public class JacksonJsonMapper implements JsonMapper {
     private final ObjectMapper objectMapper;
@@ -24,19 +30,49 @@ public class JacksonJsonMapper implements JsonMapper {
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     }
 
-    public String toJsonString(Object obj) {
+    @Override
+    public <T> T fromJsonStream(InputStream json, Type targetType) {
         try {
-            return objectMapper.writeValueAsString(obj);
+            return objectMapper.readValue(json, objectMapper.constructType(targetType));
         } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize object to JSON", e);
+            throw new RuntimeException("Failed to deserialize JSON from InputStream", e);
         }
     }
 
-    public <T> T fromJsonString(String json, Class<T> targetClass) {
+    @Override
+    public <T> T fromJsonString(String json, Type targetType) {
         try {
-            return objectMapper.readValue(json, targetClass);
+            return objectMapper.readValue(json, objectMapper.constructType(targetType));
         } catch (Exception e) {
-            throw new RuntimeException("Failed to deserialize JSON to object", e);
+            throw new RuntimeException("Failed to deserialize JSON from String", e);
+        }
+    }
+
+    @Override
+    public InputStream toJsonStream(Object obj, Type type) {
+        try {
+            byte[] bytes = objectMapper.writerFor(objectMapper.constructType(type)).writeValueAsBytes(obj);
+            return new ByteArrayInputStream(bytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize object to JSON InputStream", e);
+        }
+    }
+
+    @Override
+    public String toJsonString(Object obj, Type type) {
+        try {
+            return objectMapper.writerFor(objectMapper.constructType(type)).writeValueAsString(obj);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize object to JSON String", e);
+        }
+    }
+
+    @Override
+    public void writeToOutputStream(Stream<?> stream, OutputStream outputStream) {
+        try {
+            objectMapper.writeValue(outputStream, stream);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to write Stream to OutputStream", e);
         }
     }
 }
