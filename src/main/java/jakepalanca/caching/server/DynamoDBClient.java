@@ -2,6 +2,7 @@ package jakepalanca.caching.server;
 
 import jakepalanca.common.Coin;
 import jakepalanca.common.Roi;
+import jakepalanca.common.SparklineIn7d;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.waiters.WaiterResponse;
@@ -14,7 +15,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+/**
+ * Handles interactions with DynamoDB for storing and retrieving Coin data.
+ */
 public class DynamoDBClient {
 
     private static final Logger logger = LoggerFactory.getLogger(DynamoDBClient.class);
@@ -139,8 +144,8 @@ public class DynamoDBClient {
             if (coin.getLow24h() != null) {
                 itemValues.put("low_24h", AttributeValue.builder().n(String.valueOf(coin.getLow24h())).build());
             }
-            if (coin.getPriceChange24hInCurrency() != null) {
-                itemValues.put("price_change_24h_in_currency", AttributeValue.builder().n(String.valueOf(coin.getPriceChange24hInCurrency())).build());
+            if (coin.getPriceChange24h() != null) {
+                itemValues.put("price_change_24h", AttributeValue.builder().n(String.valueOf(coin.getPriceChange24h())).build());
             }
             if (coin.getPriceChangePercentage24h() != null) {
                 itemValues.put("price_change_percentage_24h", AttributeValue.builder().n(String.valueOf(coin.getPriceChangePercentage24h())).build());
@@ -163,8 +168,8 @@ public class DynamoDBClient {
             if (coin.getPriceChangePercentage1y() != null) {
                 itemValues.put("price_change_percentage_1y", AttributeValue.builder().n(String.valueOf(coin.getPriceChangePercentage1y())).build());
             }
-            if (coin.getMarketCapChange24hInCurrency() != null) {
-                itemValues.put("market_cap_change_24h_in_currency", AttributeValue.builder().n(String.valueOf(coin.getMarketCapChange24hInCurrency())).build());
+            if (coin.getMarketCapChange24h() != null) {
+                itemValues.put("market_cap_change_24h", AttributeValue.builder().n(String.valueOf(coin.getMarketCapChange24h())).build());
             }
             if (coin.getMarketCapChangePercentage24h() != null) {
                 itemValues.put("market_cap_change_percentage_24h", AttributeValue.builder().n(String.valueOf(coin.getMarketCapChangePercentage24h())).build());
@@ -203,6 +208,16 @@ public class DynamoDBClient {
                 if (roi.getPercentage() != null) {
                     itemValues.put("roi_percentage", AttributeValue.builder().n(String.valueOf(roi.getPercentage())).build());
                 }
+            }
+
+            // Handle Sparkline data
+            SparklineIn7d sparkline = coin.getSparklineIn7d();
+            if (sparkline != null && sparkline.getPrice() != null) {
+                List<AttributeValue> sparklinePrices = sparkline.getPrice().stream()
+                        .map(price -> AttributeValue.builder().n(String.valueOf(price)).build())
+                        .collect(Collectors.toList());
+
+                itemValues.put("sparkline_in_7d", AttributeValue.builder().l(sparklinePrices).build());
             }
 
             PutItemRequest putItemRequest = PutItemRequest.builder()
@@ -261,7 +276,7 @@ public class DynamoDBClient {
         coin.setTotalVolume(item.get("total_volume") != null ? Long.valueOf(item.get("total_volume").n()) : null);
         coin.setHigh24h(item.get("high_24h") != null ? Double.valueOf(item.get("high_24h").n()) : null);
         coin.setLow24h(item.get("low_24h") != null ? Double.valueOf(item.get("low_24h").n()) : null);
-        coin.setPriceChange24hInCurrency(item.get("price_change_24h_in_currency") != null ? Double.valueOf(item.get("price_change_24h_in_currency").n()) : null);
+        coin.setPriceChange24h(item.get("price_change_24h") != null ? Double.valueOf(item.get("price_change_24h").n()) : null);
         coin.setPriceChangePercentage24h(item.get("price_change_percentage_24h") != null ? Double.valueOf(item.get("price_change_percentage_24h").n()) : null);
         coin.setPriceChangePercentage1h(item.get("price_change_percentage_1h") != null ? Double.valueOf(item.get("price_change_percentage_1h").n()) : null);
         coin.setPriceChangePercentage7d(item.get("price_change_percentage_7d") != null ? Double.valueOf(item.get("price_change_percentage_7d").n()) : null);
@@ -269,7 +284,7 @@ public class DynamoDBClient {
         coin.setPriceChangePercentage30d(item.get("price_change_percentage_30d") != null ? Double.valueOf(item.get("price_change_percentage_30d").n()) : null);
         coin.setPriceChangePercentage200d(item.get("price_change_percentage_200d") != null ? Double.valueOf(item.get("price_change_percentage_200d").n()) : null);
         coin.setPriceChangePercentage1y(item.get("price_change_percentage_1y") != null ? Double.valueOf(item.get("price_change_percentage_1y").n()) : null);
-        coin.setMarketCapChange24hInCurrency(item.get("market_cap_change_24h_in_currency") != null ? Long.valueOf(item.get("market_cap_change_24h_in_currency").n()) : null);
+        coin.setMarketCapChange24h(item.get("market_cap_change_24h") != null ? Double.valueOf(item.get("market_cap_change_24h").n()) : null);
         coin.setMarketCapChangePercentage24h(item.get("market_cap_change_percentage_24h") != null ? Double.valueOf(item.get("market_cap_change_percentage_24h").n()) : null);
         coin.setCirculatingSupply(item.get("circulating_supply") != null ? Double.valueOf(item.get("circulating_supply").n()) : null);
         coin.setTotalSupply(item.get("total_supply") != null ? Double.valueOf(item.get("total_supply").n()) : null);
@@ -289,6 +304,17 @@ public class DynamoDBClient {
             roi.setTimes(item.get("roi_times") != null ? Double.valueOf(item.get("roi_times").n()) : null);
             roi.setPercentage(item.get("roi_percentage") != null ? Double.valueOf(item.get("roi_percentage").n()) : null);
             coin.setRoi(roi);
+        }
+
+        // Handle Sparkline data
+        if (item.containsKey("sparkline_in_7d")) {
+            SparklineIn7d sparkline = new SparklineIn7d();
+            List<AttributeValue> priceList = item.get("sparkline_in_7d").l();
+            List<Double> prices = priceList.stream()
+                    .map(attributeValue -> Double.valueOf(attributeValue.n()))
+                    .collect(Collectors.toList());
+            sparkline.setPrice(prices);
+            coin.setSparklineIn7d(sparkline);
         }
 
         return coin;

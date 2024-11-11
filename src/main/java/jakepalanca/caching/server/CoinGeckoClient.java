@@ -1,9 +1,7 @@
-// ----- CoinGeckoClient.java -----
 package jakepalanca.caching.server;
 
-// Imports...
-
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import jakepalanca.common.Coin;
@@ -12,7 +10,6 @@ import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.io.HttpClientResponseHandler;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,15 +30,25 @@ public class CoinGeckoClient {
 
     private static final Logger logger = LoggerFactory.getLogger(CoinGeckoClient.class);
 
+    // Base URL and Endpoints
     private static final String BASE_URL = "https://api.coingecko.com/api/v3";
     private static final String COINS_MARKETS_ENDPOINT = "/coins/markets";
-    private static final String PARAMETERS = "?vs_currency=usd&order=market_cap_desc&per_page=250&sparkline=false" +
-            "&price_change_percentage=1h,24h,7d,14d,30d,200d,1y&locale=en&precision=full";
 
-    /**
-     * Delay between API requests in milliseconds to respect rate limits.
-     */
+    // Constants for configuration
+    private static final String LOCALIZATION = "en"; // Change as needed
+    private static final String VS_CURRENCY = "usd"; // Change as needed
+
+    // API Parameters
+    private static final String PARAMETERS = String.format(
+            "?vs_currency=%s&order=market_cap_desc&per_page=250&sparkline=true" +
+                    "&price_change_percentage=1h,24h,7d,14d,30d,200d,1y&locale=%s&precision=full",
+            VS_CURRENCY, LOCALIZATION);
+
+    // Delay between API requests in milliseconds to respect rate limits
     public static final int REQUEST_DELAY_MS = 15000;
+
+    // API Key (Ensure this is set securely, e.g., via environment variables)
+    private static final String API_KEY = System.getenv("COINGECKO_API_KEY"); // Set this environment variable
 
     private final CloseableHttpClient client;
     private final ObjectMapper objectMapper;
@@ -53,6 +60,7 @@ public class CoinGeckoClient {
         this.client = HttpClients.createDefault();
         this.objectMapper = new ObjectMapper();
         objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
     /**
@@ -133,9 +141,23 @@ public class CoinGeckoClient {
         return allCoins;
     }
 
+    /**
+     * Fetches a single batch of coins from the specified URL.
+     *
+     * @param url         the API endpoint to fetch data from
+     * @param batchNumber the current batch number for logging
+     * @return a list of {@link Coin} objects
+     * @throws IOException    if an I/O error occurs
+     * @throws ParseException if parsing fails
+     */
     private List<Coin> fetchBatch(String url, int batchNumber) throws IOException, ParseException {
         HttpGet request = new HttpGet(url);
         request.addHeader("accept", "application/json");
+
+        // Add API key header if available
+        if (API_KEY != null && !API_KEY.isEmpty()) {
+            request.addHeader("x-cg-demo-api-key", API_KEY);
+        }
 
         HttpClientResponseHandler<List<Coin>> responseHandler = getListHttpClientResponseHandler(batchNumber);
 
@@ -193,7 +215,7 @@ public class CoinGeckoClient {
         return response -> {
             int statusCode = response.getCode();
             if (statusCode == 200) {
-                String responseBody = EntityUtils.toString(response.getEntity());
+                String responseBody = org.apache.hc.core5.http.io.entity.EntityUtils.toString(response.getEntity());
                 logger.info("Successfully fetched batch {}.", batchNumber);
                 return parseCoins(responseBody);
             } else {
@@ -211,8 +233,7 @@ public class CoinGeckoClient {
      * @throws IOException if an error occurs while parsing the JSON
      */
     private List<Coin> parseCoins(String responseBody) throws IOException {
-        return objectMapper.readValue(responseBody, new TypeReference<List<Coin>>() {
-        });
+        return objectMapper.readValue(responseBody, new TypeReference<List<Coin>>() {});
     }
 
     /**
