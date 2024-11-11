@@ -33,13 +33,12 @@ jobs:
       # 4. Deploy to EC2 via SSH
       - name: Deploy to EC2
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.EC2_HOST }} '
+          ssh -i "/github/home/.ssh/id_rsa" ec2-user@${{ secrets.EC2_HOST }} '
             export DEMO_MODE=${{ secrets.DEMO_MODE }} &&
             cd /home/ec2-user/Caching-Server &&
             git pull origin master &&
-            # (Optional) Build or restart your application here
-            # For example, if using Maven:
+            # (Optional) Build your project
             mvn clean install &&
-            # Restart the service if applicable
+            # (Optional) Restart your application or service
             # sudo systemctl restart your-service
           '
