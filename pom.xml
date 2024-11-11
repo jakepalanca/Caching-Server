@@ -114,18 +114,21 @@
       <type>pom</type>
     </dependency>
 
-    <!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk -->
+    <!-- https://mvnrepository.com/artifact/software.amazon.awssdk/core -->
     <dependency>
-      <groupId>com.amazonaws</groupId>
-      <artifactId>aws-java-sdk</artifactId>
-      <version>1.12.777</version>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>core</artifactId>
+      <version>2.29.9</version>
+      <type>pom</type>
     </dependency>
 
+    <!-- https://mvnrepository.com/artifact/software.amazon.awssdk/dynamodb -->
     <dependency>
-      <groupId>com.amazonaws</groupId>
-      <artifactId>aws-java-sdk-dynamodb</artifactId>
-      <version>1.12.525</version> <!-- Use the latest version available -->
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>dynamodb</artifactId>
+      <version>2.29.9</version>
     </dependency>
+
   </dependencies>
 
   <build>
