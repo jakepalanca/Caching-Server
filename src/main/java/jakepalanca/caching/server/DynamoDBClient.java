@@ -5,11 +5,9 @@ import jakepalanca.common.Roi;
 import jakepalanca.common.SparklineIn7d;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.waiters.WaiterResponse;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
-import software.amazon.awssdk.services.dynamodb.waiters.DynamoDbWaiter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,53 +22,13 @@ public class DynamoDBClient {
 
     private static final Logger logger = LoggerFactory.getLogger(DynamoDBClient.class);
     private final DynamoDbClient dynamoDbClient;
-    private static final String TABLE_NAME = "Coins";
+    private static final String TABLE_NAME = "Coins-en-USD";
 
     public DynamoDBClient() {
         // Initialize the DynamoDbClient
         dynamoDbClient = DynamoDbClient.builder()
                 .region(Region.US_EAST_1) // Replace with your AWS region
                 .build();
-
-        // Create table if it doesn't exist
-        createTableIfNotExists();
-    }
-
-    private void createTableIfNotExists() {
-        try {
-            // List existing tables using the DynamoDbClient
-            ListTablesResponse listTablesResponse = dynamoDbClient.listTables();
-            List<String> existingTables = listTablesResponse.tableNames();
-
-            if (!existingTables.contains(TABLE_NAME)) {
-                logger.info("Creating DynamoDB table: {}", TABLE_NAME);
-
-                CreateTableRequest request = CreateTableRequest.builder()
-                        .tableName(TABLE_NAME)
-                        .keySchema(KeySchemaElement.builder()
-                                .attributeName("id")
-                                .keyType(KeyType.HASH)
-                                .build())
-                        .attributeDefinitions(AttributeDefinition.builder()
-                                .attributeName("id")
-                                .attributeType(ScalarAttributeType.S)
-                                .build())
-                        .provisionedThroughput(ProvisionedThroughput.builder()
-                                .readCapacityUnits(5L)
-                                .writeCapacityUnits(5L)
-                                .build())
-                        .build();
-
-                DynamoDbWaiter dbWaiter = dynamoDbClient.waiter();
-                CreateTableResponse createTableResponse = dynamoDbClient.createTable(request);
-                WaiterResponse<DescribeTableResponse> waiterResponse = dbWaiter.waitUntilTableExists(r -> r.tableName(TABLE_NAME));
-                waiterResponse.matched().response().ifPresent(table -> logger.info("Table '{}' created successfully.", TABLE_NAME));
-            } else {
-                logger.info("Table '{}' already exists.", TABLE_NAME);
-            }
-        } catch (Exception e) {
-            logger.error("Error creating table '{}': {}", TABLE_NAME, e.getMessage(), e);
-        }
     }
 
     /**
