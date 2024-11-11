@@ -1,0 +1,45 @@
+# .github/workflows/deploy.yml
+
+name: Deploy to EC2 on Master Push
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      DEMO_MODE: ${{ secrets.DEMO_MODE }}
+
+    steps:
+      # 1. Checkout the repository code
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # 2. Set up SSH key
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.PEM_FILE }}
+
+      # 3. Add EC2_HOST to known_hosts to prevent SSH authenticity prompts
+      - name: Add EC2 Host to known_hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      # 4. Deploy to EC2 via SSH
+      - name: Deploy to EC2
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.EC2_HOST }} '
+            export DEMO_MODE=${{ secrets.DEMO_MODE }} &&
+            cd /home/ec2-user/Caching-Server &&
+            git pull origin master &&
+            # (Optional) Build or restart your application here
+            # For example, if using Maven:
+            mvn clean install &&
+            # Restart the service if applicable
+            # sudo systemctl restart your-service
+          '
