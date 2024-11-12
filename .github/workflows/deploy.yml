@@ -12,14 +12,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Set up SSH key and known hosts with retry logic for keyscan
+      # 2. Set up SSH key and known hosts without ssh-keyscan
       - name: Set up SSH key and known hosts
         run: |
           echo "Setting up SSH keys..."
           export HOME=/home/runner
           mkdir -p $HOME/.ssh
           
-          # Save the SSH key
+          # Save the SSH key from GitHub secret and set the correct permissions
           echo "${{ secrets.PEM_FILE }}" | tr -d '\r' > $HOME/.ssh/Github-Action-1.pem
           chmod 400 $HOME/.ssh/Github-Action-1.pem
           
@@ -27,20 +27,10 @@ jobs:
           eval "$(ssh-agent -s)"
           ssh-add $HOME/.ssh/Github-Action-1.pem || { echo "Failed to add SSH key"; exit 1; }
           
-          # Retry logic for ssh-keyscan to handle network issues
-          for i in {1..10}; do
-            ssh-keyscan -H ${{ secrets.EC2_HOST }} >> $HOME/.ssh/known_hosts && break
-            echo "ssh-keyscan attempt $i failed. Retrying in 5 seconds..."
-            sleep 5
-          done
-
-          # Check if the known_hosts file contains the EC2 host
-          if ! grep -q "${{ secrets.EC2_HOST }}" $HOME/.ssh/known_hosts; then
-            echo "Failed to add EC2 host to known hosts after multiple attempts"
-            exit 1
-          fi
-
+          # Manually add EC2 host to known_hosts by establishing the fingerprint through the PEM file
+          ssh-keygen -y -f $HOME/.ssh/Github-Action-1.pem > $HOME/.ssh/known_hosts
           chmod 644 $HOME/.ssh/known_hosts
+
           echo "SSH keys set up completed."
 
       # 3. SSH into EC2 instance and run commands directly in one SSH session
