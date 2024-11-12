@@ -11,6 +11,7 @@ jobs:
 
     env:
       DEMO_MODE: ${{ secrets.DEMO_MODE }}
+      COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
 
     steps:
       # 1. Checkout the repository code
@@ -38,6 +39,7 @@ jobs:
 
             # Export environment variables
             export DEMO_MODE=${{ secrets.DEMO_MODE }}
+            export COINGECKO_API_KEY=${{ secrets.COINGECKO_API_KEY }}
 
             # Navigate to the application directory
             cd /home/ec2-user/Caching-Server

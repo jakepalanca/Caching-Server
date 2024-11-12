@@ -130,74 +130,6 @@ public class DynamoDBClient {
                 itemValues.put("low_24h", AttributeValue.builder().n(String.valueOf(coin.getLow24h())).build());
                 logger.debug("Set 'low_24h' attribute: {}", coin.getLow24h());
             }
-            if (coin.getPriceChange24h() != null) {
-                itemValues.put("price_change_24h", AttributeValue.builder().n(String.valueOf(coin.getPriceChange24h())).build());
-                logger.debug("Set 'price_change_24h' attribute: {}", coin.getPriceChange24h());
-            }
-            if (coin.getPriceChangePercentage24h() != null) {
-                itemValues.put("price_change_percentage_24h", AttributeValue.builder().n(String.valueOf(coin.getPriceChangePercentage24h())).build());
-                logger.debug("Set 'price_change_percentage_24h' attribute: {}", coin.getPriceChangePercentage24h());
-            }
-            if (coin.getPriceChangePercentage1h() != null) {
-                itemValues.put("price_change_percentage_1h", AttributeValue.builder().n(String.valueOf(coin.getPriceChangePercentage1h())).build());
-                logger.debug("Set 'price_change_percentage_1h' attribute: {}", coin.getPriceChangePercentage1h());
-            }
-            if (coin.getPriceChangePercentage7d() != null) {
-                itemValues.put("price_change_percentage_7d", AttributeValue.builder().n(String.valueOf(coin.getPriceChangePercentage7d())).build());
-                logger.debug("Set 'price_change_percentage_7d' attribute: {}", coin.getPriceChangePercentage7d());
-            }
-            if (coin.getPriceChangePercentage14d() != null) {
-                itemValues.put("price_change_percentage_14d", AttributeValue.builder().n(String.valueOf(coin.getPriceChangePercentage14d())).build());
-                logger.debug("Set 'price_change_percentage_14d' attribute: {}", coin.getPriceChangePercentage14d());
-            }
-            if (coin.getPriceChangePercentage30d() != null) {
-                itemValues.put("price_change_percentage_30d", AttributeValue.builder().n(String.valueOf(coin.getPriceChangePercentage30d())).build());
-                logger.debug("Set 'price_change_percentage_30d' attribute: {}", coin.getPriceChangePercentage30d());
-            }
-            if (coin.getPriceChangePercentage200d() != null) {
-                itemValues.put("price_change_percentage_200d", AttributeValue.builder().n(String.valueOf(coin.getPriceChangePercentage200d())).build());
-                logger.debug("Set 'price_change_percentage_200d' attribute: {}", coin.getPriceChangePercentage200d());
-            }
-            if (coin.getPriceChangePercentage1y() != null) {
-                itemValues.put("price_change_percentage_1y", AttributeValue.builder().n(String.valueOf(coin.getPriceChangePercentage1y())).build());
-                logger.debug("Set 'price_change_percentage_1y' attribute: {}", coin.getPriceChangePercentage1y());
-            }
-            if (coin.getMarketCapChange24h() != null) {
-                itemValues.put("market_cap_change_24h", AttributeValue.builder().n(String.valueOf(coin.getMarketCapChange24h())).build());
-                logger.debug("Set 'market_cap_change_24h' attribute: {}", coin.getMarketCapChange24h());
-            }
-            if (coin.getMarketCapChangePercentage24h() != null) {
-                itemValues.put("market_cap_change_percentage_24h", AttributeValue.builder().n(String.valueOf(coin.getMarketCapChangePercentage24h())).build());
-                logger.debug("Set 'market_cap_change_percentage_24h' attribute: {}", coin.getMarketCapChangePercentage24h());
-            }
-            if (coin.getCirculatingSupply() != null) {
-                itemValues.put("circulating_supply", AttributeValue.builder().n(String.valueOf(coin.getCirculatingSupply())).build());
-                logger.debug("Set 'circulating_supply' attribute: {}", coin.getCirculatingSupply());
-            }
-            if (coin.getTotalSupply() != null) {
-                itemValues.put("total_supply", AttributeValue.builder().n(String.valueOf(coin.getTotalSupply())).build());
-                logger.debug("Set 'total_supply' attribute: {}", coin.getTotalSupply());
-            }
-            if (coin.getMaxSupply() != null) {
-                itemValues.put("max_supply", AttributeValue.builder().n(String.valueOf(coin.getMaxSupply())).build());
-                logger.debug("Set 'max_supply' attribute: {}", coin.getMaxSupply());
-            }
-            if (coin.getAth() != null) {
-                itemValues.put("ath", AttributeValue.builder().n(String.valueOf(coin.getAth())).build());
-                logger.debug("Set 'ath' attribute: {}", coin.getAth());
-            }
-            if (coin.getAthChangePercentage() != null) {
-                itemValues.put("ath_change_percentage", AttributeValue.builder().n(String.valueOf(coin.getAthChangePercentage())).build());
-                logger.debug("Set 'ath_change_percentage' attribute: {}", coin.getAthChangePercentage());
-            }
-            if (coin.getAtl() != null) {
-                itemValues.put("atl", AttributeValue.builder().n(String.valueOf(coin.getAtl())).build());
-                logger.debug("Set 'atl' attribute: {}", coin.getAtl());
-            }
-            if (coin.getAtlChangePercentage() != null) {
-                itemValues.put("atl_change_percentage", AttributeValue.builder().n(String.valueOf(coin.getAtlChangePercentage())).build());
-                logger.debug("Set 'atl_change_percentage' attribute: {}", coin.getAtlChangePercentage());
-            }
 
             // Handle ROI if present
             Roi roi = coin.getRoi();
@@ -230,11 +162,13 @@ public class DynamoDBClient {
             PutItemRequest putItemRequest = PutItemRequest.builder()
                     .tableName(TABLE_NAME)
                     .item(itemValues)
+                    .returnConsumedCapacity(ReturnConsumedCapacity.TOTAL) // Request consumed capacity
                     .build();
             logger.debug("Constructed PutItemRequest for coin ID: {}", coin.getId());
 
             PutItemResponse putItemResponse = dynamoDbClient.putItem(putItemRequest);
-            logger.info("Successfully saved/updated coin with ID: {}. Consumed Capacity: {}", coin.getId(), putItemResponse.consumedCapacity());
+            logger.info("Successfully saved/updated coin with ID: {}. Consumed Capacity: {}",
+                    coin.getId(), putItemResponse.consumedCapacity());
         } catch (DynamoDbException e) {
             logger.error("DynamoDBException while saving/updating coin with ID {}: {}", coin.getId(), e.getMessage(), e);
         } catch (Exception e) {
@@ -295,26 +229,6 @@ public class DynamoDBClient {
             coin.setTotalVolume(item.get("total_volume") != null ? Long.valueOf(item.get("total_volume").n()) : null);
             coin.setHigh24h(item.get("high_24h") != null ? Double.valueOf(item.get("high_24h").n()) : null);
             coin.setLow24h(item.get("low_24h") != null ? Double.valueOf(item.get("low_24h").n()) : null);
-            coin.setPriceChange24h(item.get("price_change_24h") != null ? Double.valueOf(item.get("price_change_24h").n()) : null);
-            coin.setPriceChangePercentage24h(item.get("price_change_percentage_24h") != null ? Double.valueOf(item.get("price_change_percentage_24h").n()) : null);
-            coin.setPriceChangePercentage1h(item.get("price_change_percentage_1h") != null ? Double.valueOf(item.get("price_change_percentage_1h").n()) : null);
-            coin.setPriceChangePercentage7d(item.get("price_change_percentage_7d") != null ? Double.valueOf(item.get("price_change_percentage_7d").n()) : null);
-            coin.setPriceChangePercentage14d(item.get("price_change_percentage_14d") != null ? Double.valueOf(item.get("price_change_percentage_14d").n()) : null);
-            coin.setPriceChangePercentage30d(item.get("price_change_percentage_30d") != null ? Double.valueOf(item.get("price_change_percentage_30d").n()) : null);
-            coin.setPriceChangePercentage200d(item.get("price_change_percentage_200d") != null ? Double.valueOf(item.get("price_change_percentage_200d").n()) : null);
-            coin.setPriceChangePercentage1y(item.get("price_change_percentage_1y") != null ? Double.valueOf(item.get("price_change_percentage_1y").n()) : null);
-            coin.setMarketCapChange24h(item.get("market_cap_change_24h") != null ? Double.valueOf(item.get("market_cap_change_24h").n()) : null);
-            coin.setMarketCapChangePercentage24h(item.get("market_cap_change_percentage_24h") != null ? Double.valueOf(item.get("market_cap_change_percentage_24h").n()) : null);
-            coin.setCirculatingSupply(item.get("circulating_supply") != null ? Double.valueOf(item.get("circulating_supply").n()) : null);
-            coin.setTotalSupply(item.get("total_supply") != null ? Double.valueOf(item.get("total_supply").n()) : null);
-            coin.setMaxSupply(item.get("max_supply") != null ? Double.valueOf(item.get("max_supply").n()) : null);
-            coin.setAth(item.get("ath") != null ? Double.valueOf(item.get("ath").n()) : null);
-            coin.setAthChangePercentage(item.get("ath_change_percentage") != null ? Double.valueOf(item.get("ath_change_percentage").n()) : null);
-            coin.setAthDate(item.get("ath_date") != null ? item.get("ath_date").s() : null);
-            coin.setAtl(item.get("atl") != null ? Double.valueOf(item.get("atl").n()) : null);
-            coin.setAtlChangePercentage(item.get("atl_change_percentage") != null ? Double.valueOf(item.get("atl_change_percentage").n()) : null);
-            coin.setAtlDate(item.get("atl_date") != null ? item.get("atl_date").s() : null);
-            coin.setLastUpdated(item.get("last_updated") != null ? item.get("last_updated").s() : null);
 
             // Handle ROI if present
             if (item.containsKey("roi_currency") || item.containsKey("roi_times") || item.containsKey("roi_percentage")) {
