@@ -28,10 +28,10 @@ jobs:
           ssh-add $HOME/.ssh/Github-Action-1.pem || { echo "Failed to add SSH key"; exit 1; }
           
           # Retry logic for ssh-keyscan to handle network issues
-          for i in {1..5}; do
+          for i in {1..10}; do
             ssh-keyscan -H ${{ secrets.EC2_HOST }} >> $HOME/.ssh/known_hosts && break
-            echo "ssh-keyscan attempt $i failed. Retrying in 2 seconds..."
-            sleep 2
+            echo "ssh-keyscan attempt $i failed. Retrying in 5 seconds..."
+            sleep 5
           done
 
           # Check if the known_hosts file contains the EC2 host
@@ -43,14 +43,17 @@ jobs:
           chmod 644 $HOME/.ssh/known_hosts
           echo "SSH keys set up completed."
 
-      # 3. Stop the existing Java application instance
-      - name: Stop existing application instance on EC2
+      # 3. SSH into EC2 instance and run commands directly in one SSH session
+      - name: SSH into EC2 and execute deployment commands
         run: |
-          echo "Stopping existing application instance..."
-          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
+          echo "Connecting to EC2 instance and executing commands..."
+          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
+            echo "Connected to EC2 instance."
+
+            # Stop existing Java application instance
             PID_FILE=/home/ec2-user/Caching-Server/app.pid
-            if [ -f \"$PID_FILE\" ]; then
+            if [ -f "$PID_FILE" ]; then
               PID=$(cat $PID_FILE)
               if ps -p $PID > /dev/null; then
                 echo 'Stopping Java process with PID: ' $PID
@@ -68,21 +71,16 @@ jobs:
             else
               echo 'No PID file found. Skipping stop command.'
             fi
-          "
 
-      # 4. Deploy updated code to EC2
-      - name: Deploy latest code to EC2
-        run: |
-          echo "Deploying the latest code to EC2..."
-          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
-            set -e
+            # Deploy updated code
+            echo 'Deploying the latest code...'
             cd /home/ec2-user/Caching-Server || { echo 'Directory not found'; exit 1; }
 
             echo 'Pulling latest code from Git...'
             git fetch origin master
             LOCAL=$(git rev-parse HEAD)
             REMOTE=$(git rev-parse origin/master)
-            if [ \"$LOCAL\" != \"$REMOTE\" ]; then
+            if [ "$LOCAL" != "$REMOTE" ]; then
               git pull origin master || { echo 'Git pull failed'; exit 1; }
             else
               echo 'Already up to date.'
@@ -90,15 +88,9 @@ jobs:
 
             echo 'Building the project...'
             mvn clean install || { echo 'Build failed'; exit 1; }
-          "
 
-      # 5. Start the new application instance on EC2
-      - name: Start new application instance on EC2
-        run: |
-          echo "Starting new application instance..."
-          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
-            set -e
-            cd /home/ec2-user/Caching-Server
+            # Start new Java application instance
+            echo 'Starting new application instance...'
 
             # Define environment variables
             COINGECKO_REQUEST_DELAY_MS=15000
@@ -107,10 +99,9 @@ jobs:
             UPDATE_DYNAMODB_INTERVAL_SECONDS=30
             DYNAMODB_WRITE_CAPACITY_UNITS=50
 
-            echo 'Starting application...'
             nohup java -Dfile.encoding=UTF-8 \
-              -Ddemo.mode=\"${{ secrets.DEMO_MODE }}\" \
-              -Dcoingecko.api.key=\"${{ secrets.COINGECKO_API_KEY }}\" \
+              -Ddemo.mode="${{ secrets.DEMO_MODE }}" \
+              -Dcoingecko.api.key="${{ secrets.COINGECKO_API_KEY }}" \
               -Dcoingecko.request.delay.ms=${COINGECKO_REQUEST_DELAY_MS} \
               -Dcoingecko.number.of.batches=${COINGECKO_NUMBER_OF_BATCHES} \
               -Dfetch.coin.interval.seconds=${FETCH_COIN_INTERVAL_SECONDS} \
@@ -120,4 +111,4 @@ jobs:
 
             echo $! > app.pid
             echo 'New application instance started successfully.'
-          "
+          EOF
