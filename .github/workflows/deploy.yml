@@ -14,7 +14,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Set up SSH credentials
+      # 2. Set up SSH credentials manually
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
@@ -22,6 +22,11 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           echo "${{ secrets.EC2_HOST_KEY }}" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+
+      # Optional: Verify SSH Connection
+      - name: Test SSH Connection
+        run: |
+          ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15 ec2-user@${{ secrets.EC2_HOST }} "echo SSH Connection Successful"
 
       # 3. Deploy to EC2 via SSH
       - name: Deploy to EC2
@@ -39,7 +44,10 @@ jobs:
 
             # Pull the latest code
             git fetch origin master
-            if git rev-parse HEAD@{upstream} | grep -q "$(git rev-parse HEAD)"; then
+            LOCAL=$(git rev-parse HEAD)
+            REMOTE=$(git rev-parse origin/master)
+
+            if [ "$LOCAL" = "$REMOTE" ]; then
               echo "Already up to date."
             else
               git pull origin master
