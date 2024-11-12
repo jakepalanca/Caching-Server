@@ -14,27 +14,25 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Set up SSH credentials manually
-      - name: Set up SSH
+      # 2. Set up SSH key manually
+      - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.PEM_FILE }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          echo "${{ secrets.EC2_HOST_KEY }}" > ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
+          echo "${{ secrets.PEM_FILE }}" > ~/.ssh/Github-Action-1.pem
+          chmod 600 ~/.ssh/Github-Action-1.pem
 
-      # Optional: Verify SSH Connection
+      # Optional: Test SSH Connection
       - name: Test SSH Connection
         run: |
-          ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15 ec2-user@${{ secrets.EC2_HOST }} "echo SSH Connection Successful"
+          ssh -i ~/.ssh/Github-Action-1.pem ec2-user@ec2-50-17-144-60.compute-1.amazonaws.com "echo SSH Connection Successful"
 
-      # 3. Deploy to EC2 via SSH
+      # 3. Deploy to EC2
       - name: Deploy to EC2
         env:
           DEMO_MODE: ${{ secrets.DEMO_MODE }}
           COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
         run: |
-          ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15 ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -i ~/.ssh/Github-Action-1.pem ec2-user@ec2-50-17-144-60.compute-1.amazonaws.com << 'EOF'
             set -e
 
             echo "Starting deployment..."
