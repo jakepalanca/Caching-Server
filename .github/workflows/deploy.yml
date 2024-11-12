@@ -33,14 +33,14 @@ jobs:
 
           echo "SSH keys set up completed."
 
-      # 3. SSH into EC2 instance and run commands via separate SSH commands for better reliability
+      # 3. SSH into EC2 instance and run commands via smaller, independent commands for better reliability
       - name: Stop existing Java application instance
         run: |
           echo "Stopping existing application instance on EC2..."
-          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
+          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
             PID_FILE=/home/ec2-user/Caching-Server/app.pid
-            if [ -f \"$PID_FILE\" ]; then
+            if [ -f "$PID_FILE" ]; then
               PID=$(cat $PID_FILE)
               if ps -p $PID > /dev/null; then
                 echo 'Stopping Java process with PID: ' $PID
@@ -58,12 +58,12 @@ jobs:
             else
               echo 'No PID file found. Skipping stop command.'
             fi
-          "
+          EOF
 
       - name: Deploy updated code to EC2
         run: |
           echo "Deploying the latest code to EC2..."
-          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
+          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
             cd /home/ec2-user/Caching-Server || { echo 'Directory not found'; exit 1; }
           
@@ -71,26 +71,26 @@ jobs:
             git fetch origin master
             LOCAL=$(git rev-parse HEAD)
             REMOTE=$(git rev-parse origin/master)
-            if [ \"$LOCAL\" != \"$REMOTE\" ]; then
+            if [ "$LOCAL" != "$REMOTE" ]; then
               git pull origin master || { echo 'Git pull failed'; exit 1; }
             else
               echo 'Already up to date.'
             fi
-          "
+          EOF
 
       - name: Build the project on EC2
         run: |
           echo "Building the project..."
-          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
+          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
             cd /home/ec2-user/Caching-Server
             mvn clean install || { echo 'Build failed'; exit 1; }
-          "
+          EOF
 
       - name: Start new application instance on EC2
         run: |
           echo "Starting new application instance..."
-          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
+          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
             cd /home/ec2-user/Caching-Server
 
@@ -102,8 +102,8 @@ jobs:
             DYNAMODB_WRITE_CAPACITY_UNITS=50
 
             nohup java -Dfile.encoding=UTF-8 \
-              -Ddemo.mode=\"${{ secrets.DEMO_MODE }}\" \
-              -Dcoingecko.api.key=\"${{ secrets.COINGECKO_API_KEY }}\" \
+              -Ddemo.mode="${{ secrets.DEMO_MODE }}" \
+              -Dcoingecko.api.key="${{ secrets.COINGECKO_API_KEY }}" \
               -Dcoingecko.request.delay.ms=${COINGECKO_REQUEST_DELAY_MS} \
               -Dcoingecko.number.of.batches=${COINGECKO_NUMBER_OF_BATCHES} \
               -Dfetch.coin.interval.seconds=${FETCH_COIN_INTERVAL_SECONDS} \
@@ -113,4 +113,4 @@ jobs:
 
             echo $! > app.pid
             echo 'New application instance started successfully.'
-          "
+          EOF
