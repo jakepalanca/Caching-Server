@@ -59,6 +59,28 @@ public class MainApplication {
         // Initialize Scheduler
         Scheduler scheduler = initializeScheduler();
 
+        // Add shutdown hook to close clients and scheduler
+        final CoinGeckoClient finalCoinGeckoClient = coinGeckoClient;
+        final DynamoDBClient finalDynamoDBClient = dynamoDBClient;
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            logger.info("Shutdown hook triggered. Closing clients and stopping scheduler.");
+            try {
+                if (scheduler != null) {
+                    scheduler.shutdown(true);
+                    logger.info("Scheduler shut down successfully.");
+                }
+            } catch (SchedulerException e) {
+                logger.error("Error shutting down scheduler: {}", e.getMessage(), e);
+            }
+            if (finalCoinGeckoClient != null) {
+                finalCoinGeckoClient.close();
+            }
+            if (finalDynamoDBClient != null) {
+                finalDynamoDBClient.close();
+            }
+            logger.info("Clients closed successfully.");
+        }));
+
         // Schedule FetchCoinJob
         scheduleFetchCoinJob(coinGeckoClient, coinQueue, scheduler);
 
@@ -114,21 +136,7 @@ public class MainApplication {
                     .build();
             logger.debug("FetchCoinJob detail created with JobDataMap.");
 
-            // Fetch interval from environment variable or default to 60 seconds
-            String intervalEnv = System.getenv("FETCH_COIN_INTERVAL_SECONDS");
-            int intervalInSeconds;
-            if (intervalEnv != null) {
-                try {
-                    intervalInSeconds = Integer.parseInt(intervalEnv);
-                    logger.debug("FETCH_COIN_INTERVAL_SECONDS set to {} seconds from environment variable.", intervalInSeconds);
-                } catch (NumberFormatException e) {
-                    logger.warn("Invalid FETCH_COIN_INTERVAL_SECONDS value '{}'. Defaulting to 60 seconds.", intervalEnv);
-                    intervalInSeconds = 60;
-                }
-            } else {
-                intervalInSeconds = 60;
-                logger.debug("FETCH_COIN_INTERVAL_SECONDS not set. Defaulting to {} seconds.", intervalInSeconds);
-            }
+            int intervalInSeconds = getIntervalFromEnv("FETCH_COIN_INTERVAL_SECONDS", 60);
 
             Trigger trigger = newTrigger()
                     .startNow()
@@ -168,21 +176,7 @@ public class MainApplication {
                     .build();
             logger.debug("UpdateDynamoDBJob detail created with JobDataMap.");
 
-            // Update interval from environment variable or default to 30 seconds
-            String intervalEnv = System.getenv("UPDATE_DYNAMODB_INTERVAL_SECONDS");
-            int intervalInSeconds;
-            if (intervalEnv != null) {
-                try {
-                    intervalInSeconds = Integer.parseInt(intervalEnv);
-                    logger.debug("UPDATE_DYNAMODB_INTERVAL_SECONDS set to {} seconds from environment variable.", intervalInSeconds);
-                } catch (NumberFormatException e) {
-                    logger.warn("Invalid UPDATE_DYNAMODB_INTERVAL_SECONDS value '{}'. Defaulting to 30 seconds.", intervalEnv);
-                    intervalInSeconds = 30;
-                }
-            } else {
-                intervalInSeconds = 30;
-                logger.debug("UPDATE_DYNAMODB_INTERVAL_SECONDS not set. Defaulting to {} seconds.", intervalInSeconds);
-            }
+            int intervalInSeconds = getIntervalFromEnv("UPDATE_DYNAMODB_INTERVAL_SECONDS", 30);
 
             Trigger trigger = newTrigger()
                     .startNow()
@@ -201,4 +195,28 @@ public class MainApplication {
         }
     }
 
+    /**
+     * Helper method to get interval from environment variable or default value.
+     *
+     * @param envVarName      the name of the environment variable
+     * @param defaultInterval the default interval in seconds
+     * @return the interval in seconds
+     */
+    private static int getIntervalFromEnv(String envVarName, int defaultInterval) {
+        String intervalEnv = System.getenv(envVarName);
+        int intervalInSeconds;
+        if (intervalEnv != null) {
+            try {
+                intervalInSeconds = Integer.parseInt(intervalEnv);
+                logger.debug("{} set to {} seconds from environment variable.", envVarName, intervalInSeconds);
+            } catch (NumberFormatException e) {
+                logger.warn("Invalid {} value '{}'. Defaulting to {} seconds.", envVarName, intervalEnv, defaultInterval);
+                intervalInSeconds = defaultInterval;
+            }
+        } else {
+            intervalInSeconds = defaultInterval;
+            logger.debug("{} not set. Defaulting to {} seconds.", envVarName, defaultInterval);
+        }
+        return intervalInSeconds;
+    }
 }

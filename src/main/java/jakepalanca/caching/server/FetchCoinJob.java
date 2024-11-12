@@ -35,8 +35,24 @@ public class FetchCoinJob implements Job {
         }
 
         try {
+            // Get number of batches from environment variable
+            String numberOfBatchesEnv = System.getenv("COINGECKO_NUMBER_OF_BATCHES");
+            int numberOfBatches;
+            if (numberOfBatchesEnv != null) {
+                try {
+                    numberOfBatches = Integer.parseInt(numberOfBatchesEnv);
+                    logger.debug("COINGECKO_NUMBER_OF_BATCHES set to {} from environment variable.", numberOfBatches);
+                } catch (NumberFormatException e) {
+                    logger.warn("Invalid COINGECKO_NUMBER_OF_BATCHES value '{}'. Defaulting to 1.", numberOfBatchesEnv);
+                    numberOfBatches = 1;
+                }
+            } else {
+                numberOfBatches = 1;
+                logger.debug("COINGECKO_NUMBER_OF_BATCHES not set. Defaulting to {}.", numberOfBatches);
+            }
+
             // Fetch top coins
-            List<Map<String, Object>> topCoins = coinGeckoClient.fetchTopCoins(4);
+            List<Map<String, Object>> topCoins = coinGeckoClient.fetchTopCoins(numberOfBatches);
             logger.info("Fetched {} top coins.", topCoins.size());
 
             // Enqueue the fetched coins for DynamoDB update

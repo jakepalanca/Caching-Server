@@ -8,7 +8,6 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -208,17 +207,21 @@ public class DynamoDBClient {
     }
 
     /**
-     * Retries unprocessed items from a previous batch write operation.
+     * Retries unprocessed items from a previous batch write operation using exponential backoff with jitter.
      *
      * @param unprocessedItems the unprocessed items to retry
      */
     private void retryUnprocessedItems(Map<String, List<WriteRequest>> unprocessedItems) {
         int maxRetries = 5;
         int retryCount = 0;
+        Random random = new Random();
 
         while (!unprocessedItems.isEmpty() && retryCount < maxRetries) {
             try {
-                logger.info("Retrying unprocessed items. Attempt {}/{}", retryCount + 1, maxRetries);
+                long sleepTime = (long) (Math.pow(2, retryCount) * 1000) + random.nextInt(1000);
+                logger.info("Retrying unprocessed items after {} ms. Attempt {}/{}", sleepTime, retryCount + 1, maxRetries);
+                Thread.sleep(sleepTime);
+
                 BatchWriteItemRequest retryRequest = BatchWriteItemRequest.builder()
                         .requestItems(unprocessedItems)
                         .build();
@@ -228,8 +231,6 @@ public class DynamoDBClient {
 
                 if (!unprocessedItems.isEmpty()) {
                     logger.warn("Unprocessed items remain after retry.");
-                    // Delay before next retry
-                    Thread.sleep(1000);
                 } else {
                     logger.info("All unprocessed items have been processed.");
                 }

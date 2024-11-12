@@ -114,10 +114,25 @@ jobs:
           ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
             set -e
             cd /home/ec2-user/Caching-Server
+
+            # Define constants for environment variables
+            COINGECKO_REQUEST_DELAY_MS=15000
+            COINGECKO_NUMBER_OF_BATCHES=4
+            FETCH_COIN_INTERVAL_SECONDS=60
+            UPDATE_DYNAMODB_INTERVAL_SECONDS=30
+            DYNAMODB_WRITE_CAPACITY_UNITS=50
+
+            # Start the application with environment variables
             nohup java -Dfile.encoding=UTF-8 \
               -Ddemo.mode=\"${{ secrets.DEMO_MODE }}\" \
               -Dcoingecko.api.key=\"${{ secrets.COINGECKO_API_KEY }}\" \
+              -Dcoingecko.request.delay.ms=${COINGECKO_REQUEST_DELAY_MS} \
+              -Dcoingecko.number.of.batches=${COINGECKO_NUMBER_OF_BATCHES} \
+              -Dfetch.coin.interval.seconds=${FETCH_COIN_INTERVAL_SECONDS} \
+              -Dupdate.dynamodb.interval.seconds=${UPDATE_DYNAMODB_INTERVAL_SECONDS} \
+              -Ddynamodb.write.capacity.units=${DYNAMODB_WRITE_CAPACITY_UNITS} \
               -jar target/*.jar > app.log 2>&1 &
+
             echo $! > app.pid
             echo 'New application instance started.'
           "

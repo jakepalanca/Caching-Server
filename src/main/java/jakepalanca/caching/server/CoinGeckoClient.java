@@ -38,11 +38,30 @@ public class CoinGeckoClient {
                     "&price_change_percentage=1h,24h,7d,14d,30d,200d,1y&locale=%s&precision=full",
             VS_CURRENCY, LOCALIZATION);
 
-    // Delay between API requests in milliseconds to respect rate limits
-    public static final int REQUEST_DELAY_MS = 15000;
+    // Default delay between API requests in milliseconds to respect rate limits
+    private static final int DEFAULT_REQUEST_DELAY_MS = 15000;
+    private static final int REQUEST_DELAY_MS;
+
+    static {
+        String requestDelayEnv = System.getenv("COINGECKO_REQUEST_DELAY_MS");
+        int requestDelayMs;
+        if (requestDelayEnv != null) {
+            try {
+                requestDelayMs = Integer.parseInt(requestDelayEnv);
+                logger.debug("COINGECKO_REQUEST_DELAY_MS set to {} milliseconds from environment variable.", requestDelayMs);
+            } catch (NumberFormatException e) {
+                logger.warn("Invalid COINGECKO_REQUEST_DELAY_MS value '{}'. Defaulting to {} milliseconds.", requestDelayEnv, DEFAULT_REQUEST_DELAY_MS);
+                requestDelayMs = DEFAULT_REQUEST_DELAY_MS;
+            }
+        } else {
+            requestDelayMs = DEFAULT_REQUEST_DELAY_MS;
+            logger.debug("COINGECKO_REQUEST_DELAY_MS not set. Defaulting to {} milliseconds.", DEFAULT_REQUEST_DELAY_MS);
+        }
+        REQUEST_DELAY_MS = requestDelayMs;
+    }
 
     // API Key (Ensure this is set securely, e.g., via environment variables)
-    private static final String API_KEY = System.getProperty("COINGECKO_API_KEY");
+    private static final String API_KEY = System.getenv("COINGECKO_API_KEY");
 
     private final CloseableHttpClient client;
     private final ObjectMapper objectMapper;
@@ -110,7 +129,7 @@ public class CoinGeckoClient {
 
         // Add API key header if available
         if (API_KEY != null && !API_KEY.isEmpty()) {
-            request.addHeader("x_cg_demo_api_key", API_KEY); // Change this when update to pro
+            request.addHeader("x_cg_demo_api_key", API_KEY); // Updated header name
             logger.debug("Added API key header to request for batch {}.", batchNumber);
         } else {
             logger.warn("API key is not set. Proceeding without API key for batch {}.", batchNumber);
@@ -207,9 +226,13 @@ public class CoinGeckoClient {
      *
      * @throws IOException if an error occurs while closing the client
      */
-    public void close() throws IOException {
-        logger.info("Closing CoinGeckoClient HTTP client.");
-        client.close();
-        logger.info("CoinGeckoClient HTTP client closed successfully.");
+    public void close() {
+        try {
+            logger.info("Closing CoinGeckoClient HTTP client.");
+            client.close();
+            logger.info("CoinGeckoClient HTTP client closed successfully.");
+        } catch (IOException e) {
+            logger.error("Error closing CoinGeckoClient HTTP client: {}", e.getMessage(), e);
+        }
     }
 }

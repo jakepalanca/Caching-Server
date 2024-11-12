@@ -8,6 +8,7 @@
       <option name="customHeaders">
         <set>
           <option value="x-cg-demo-api-key" />
+          <option value="x_cg_demo_api_key" />
         </set>
       </option>
     </inspection_tool>
