@@ -1,5 +1,3 @@
-name: Deploy to EC2 on Master Push
-
 on:
   push:
     branches:
@@ -44,21 +42,30 @@ jobs:
           ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no -v ec2-user@${{ secrets.EC2_HOST }} "echo SSH Connection Successful"
         timeout-minutes: 1
 
-      # 3. Stop the existing Java application instance (Early)
-      - name: Stop existing application instance on EC2 (Early step)
+      # 3. Stop the existing Java application instance (Improved Version)
+      - name: Stop existing application instance on EC2
         run: |
           echo "Checking for existing Java processes and stopping them if found..."
           ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
             set -e
-            if pgrep -f 'java -jar' > /dev/null; then
-              echo 'Stopping existing Java process...'
-              if pkill -f 'java -jar'; then
+            PID_FILE=/home/ec2-user/Caching-Server/app.pid
+            if [ -f \"$PID_FILE\" ]; then
+              PID=$(cat $PID_FILE)
+              if ps -p $PID > /dev/null; then
+                echo 'Stopping existing Java process with PID: ' $PID
+                kill -15 $PID
+                sleep 5
+                if ps -p $PID > /dev/null; then
+                  echo 'Force killing Java process...'
+                  kill -9 $PID
+                fi
                 echo 'Java process stopped successfully.'
               else
-                echo 'Error occurred while stopping Java process, or process may not exist anymore.'
+                echo 'Process ID not found. Java process may not be running.'
               fi
+              rm -f $PID_FILE
             else
-              echo 'No existing Java process found. Skipping stop command.'
+              echo 'No PID file found. Skipping stop command.'
             fi
           "
 
@@ -79,10 +86,10 @@ jobs:
             set -e
             cd /home/ec2-user/Caching-Server
             git fetch origin master
-            LOCAL=\$(git rev-parse HEAD)
-            REMOTE=\$(git rev-parse origin/master)
+            LOCAL=$(git rev-parse HEAD)
+            REMOTE=$(git rev-parse origin/master)
 
-            if [ \"\$LOCAL\" = \"\$REMOTE\" ]; then
+            if [ \"$LOCAL\" = \"$REMOTE\" ]; then
               echo 'Already up to date.'
             else
               git pull origin master
@@ -111,5 +118,6 @@ jobs:
               -Ddemo.mode='${{ secrets.DEMO_MODE }}' \
               -Dcoingecko.api.key='${{ secrets.COINGECKO_API_KEY }}' \
               -jar target/*.jar > app.log 2>&1 &
+            echo $! > app.pid
             echo 'New application instance started.'
           "
