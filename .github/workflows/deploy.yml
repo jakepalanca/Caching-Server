@@ -25,13 +25,13 @@ jobs:
         run: |
           echo "${{ secrets.EC2_HOST_KEY }}" >> ~/.ssh/known_hosts
 
-      # 4. Deploy to EC2 via SSH securely with pseudo-terminal
+      # 4. Deploy to EC2 via SSH securely without hanging
       - name: Deploy to EC2
         env:
           DEMO_MODE: ${{ secrets.DEMO_MODE }}
           COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
         run: |
-          ssh -tt -o StrictHostKeyChecking=yes ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=yes ec2-user@${{ secrets.EC2_HOST }} 'bash -s' << 'EOF'
             set -e
 
             echo "Deploying application..."
