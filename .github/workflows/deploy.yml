@@ -31,7 +31,7 @@ jobs:
           
           # Retry ssh-keyscan to prevent network-related issues
           for i in {1..5}; do
-            ssh-keyscan -H ec2-34-229-99-144.compute-1.amazonaws.com >> $HOME/.ssh/known_hosts && break || sleep 2
+            ssh-keyscan -H ${{ secrets.EC2_HOST }} >> $HOME/.ssh/known_hosts && break || sleep 2
           done
           
           chmod 644 $HOME/.ssh/known_hosts
@@ -41,11 +41,72 @@ jobs:
       - name: Test SSH Connection Immediately
         run: |
           echo "Testing SSH connection right after setting up the keys..."
-          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no -v ec2-user@ec2-50-17-144-60.compute-1.amazonaws.com "echo SSH Connection Successful"
+          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no -v ec2-user@${{ secrets.EC2_HOST }} "echo SSH Connection Successful"
         timeout-minutes: 1
 
       # Additional debug to confirm IP reachability
       - name: Test Instance Availability (Ping)
         run: |
           echo "Testing reachability of EC2 instance..."
-          ping -c 4 ec2-50-17-144-60.compute-1.amazonaws.com || { echo "Ping to EC2 failed"; exit 1; }
+          ping -c 4 ${{ secrets.EC2_HOST }} || { echo "Ping to EC2 failed"; exit 1; }
+
+      # 3. Deploy to EC2 (broken down into smaller steps for easier debugging)
+      - name: Navigate to Caching-Server directory on EC2
+        run: |
+          echo "Navigating to project directory on EC2..."
+          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
+            set -e
+            cd /home/ec2-user/Caching-Server || { echo 'Directory not found'; exit 1; }
+            echo 'Navigated to project directory.'
+          "
+
+      - name: Pull the latest code on EC2
+        run: |
+          echo "Pulling the latest code..."
+          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
+            set -e
+            cd /home/ec2-user/Caching-Server
+            git fetch origin master
+            LOCAL=\$(git rev-parse HEAD)
+            REMOTE=\$(git rev-parse origin/master)
+
+            if [ \"\$LOCAL\" = \"\$REMOTE\" ]; then
+              echo 'Already up to date.'
+            else
+              git pull origin master
+            fi
+            echo 'Git pull completed.'
+          "
+
+      - name: Build the project on EC2
+        run: |
+          echo "Building the project..."
+          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
+            set -e
+            cd /home/ec2-user/Caching-Server
+            mvn clean install
+            echo 'Build completed.'
+          "
+
+      - name: Stop the existing application instance on EC2
+        run: |
+          echo "Stopping existing application instance..."
+          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
+            set -e
+            pkill -f 'java -jar' || echo 'No existing application process found.'
+            sleep 5
+            echo 'Application instance stopped.'
+          "
+
+      - name: Start the new application instance on EC2 with environment variables
+        run: |
+          echo "Starting new application instance with environment variables..."
+          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
+            set -e
+            cd /home/ec2-user/Caching-Server
+            nohup java -Dfile.encoding=UTF-8 \
+              -Ddemo.mode='${{ secrets.DEMO_MODE }}' \
+              -Dcoingecko.api.key='${{ secrets.COINGECKO_API_KEY }}' \
+              -jar target/*.jar > app.log 2>&1 &
+            echo 'New application instance started.'
+          "
