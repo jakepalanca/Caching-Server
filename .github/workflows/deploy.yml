@@ -17,21 +17,26 @@ jobs:
       # 2. Set up SSH key and known hosts
       - name: Set up SSH key and known hosts
         run: |
+          echo "Setting up SSH keys..."
           mkdir -p ~/.ssh
           echo "${{ secrets.PEM_FILE }}" | tr -d '\r' > ~/.ssh/Github-Action-1.pem
           chmod 600 ~/.ssh/Github-Action-1.pem
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/Github-Action-1.pem
           ssh-keyscan -H ec2-50-17-144-60.compute-1.amazonaws.com >> ~/.ssh/known_hosts
+          echo "SSH keys set up completed."
 
       # Optional: Test SSH Connection
       - name: Test SSH Connection
         run: |
+          echo "Testing SSH connection..."
           ssh -o StrictHostKeyChecking=no ec2-user@ec2-50-17-144-60.compute-1.amazonaws.com "echo SSH Connection Successful"
+          echo "SSH connection test completed."
 
       # 3. Deploy to EC2
       - name: Deploy to EC2
         run: |
+          echo "Deploying to EC2..."
           ssh -o StrictHostKeyChecking=no ec2-user@ec2-50-17-144-60.compute-1.amazonaws.com "
             set -e
 
@@ -56,6 +61,7 @@ jobs:
             fi
 
             # Build the project
+            echo 'Building the project...'
             mvn clean install
 
             # Stop any existing application instance safely
@@ -71,3 +77,4 @@ jobs:
 
             echo 'Deployment completed successfully.'
           "
+          echo "Deployment to EC2 completed."
