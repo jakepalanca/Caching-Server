@@ -110,7 +110,7 @@ public class CoinGeckoClient {
 
         // Add API key header if available
         if (API_KEY != null && !API_KEY.isEmpty()) {
-            request.addHeader("x-cg-pro-api-key", API_KEY);
+            request.addHeader("x_cg_demo_api_key", API_KEY); // Change this when update to pro
             logger.debug("Added API key header to request for batch {}.", batchNumber);
         } else {
             logger.warn("API key is not set. Proceeding without API key for batch {}.", batchNumber);
