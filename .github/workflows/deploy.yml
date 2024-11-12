@@ -31,7 +31,7 @@ jobs:
           
           # Retry ssh-keyscan to prevent network-related issues
           for i in {1..5}; do
-            ssh-keyscan -H ec2-50-17-144-60.compute-1.amazonaws.com >> $HOME/.ssh/known_hosts && break || sleep 2
+            ssh-keyscan -H ec2-34-229-99-144.compute-1.amazonaws.com >> $HOME/.ssh/known_hosts && break || sleep 2
           done
           
           chmod 644 $HOME/.ssh/known_hosts
