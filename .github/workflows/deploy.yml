@@ -115,8 +115,8 @@ jobs:
             set -e
             cd /home/ec2-user/Caching-Server
             nohup java -Dfile.encoding=UTF-8 \
-              -Ddemo.mode='${{ secrets.DEMO_MODE }}' \
-              -Dcoingecko.api.key='${{ secrets.COINGECKO_API_KEY }}' \
+              -Ddemo.mode=\"${{ secrets.DEMO_MODE }}\" \
+              -Dcoingecko.api.key=\"${{ secrets.COINGECKO_API_KEY }}\" \
               -jar target/*.jar > app.log 2>&1 &
             echo $! > app.pid
             echo 'New application instance started.'

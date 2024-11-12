@@ -1,5 +1,6 @@
 package jakepalanca.caching.server;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.regions.Region;
@@ -19,7 +20,9 @@ public class DynamoDBClient {
     private final DynamoDbClient dynamoDbClient;
     private static final String TABLE_NAME = "Coins-en-USD";
     private static final int BATCH_SIZE = 25; // DynamoDB's maximum for batch write
-    private static final long BATCH_DELAY_MS = 1000; // Delay between batches
+
+    // Introduce RateLimiter to control write rate
+    private final RateLimiter rateLimiter;
 
     /**
      * Constructs a new {@code DynamoDBClient} and initializes the DynamoDB connection.
@@ -32,6 +35,25 @@ public class DynamoDBClient {
                     .region(Region.US_EAST_1) // Replace with your AWS region
                     .build();
             logger.info("DynamoDBClient initialized successfully with region US_EAST_1.");
+
+            // Initialize RateLimiter based on provisioned write capacity
+            String writeCapacityEnv = System.getenv("DYNAMODB_WRITE_CAPACITY_UNITS");
+            double writeCapacityUnits;
+            if (writeCapacityEnv != null) {
+                try {
+                    writeCapacityUnits = Double.parseDouble(writeCapacityEnv);
+                    logger.debug("DYNAMODB_WRITE_CAPACITY_UNITS set to {} from environment variable.", writeCapacityUnits);
+                } catch (NumberFormatException e) {
+                    logger.warn("Invalid DYNAMODB_WRITE_CAPACITY_UNITS value '{}'. Defaulting to 50.", writeCapacityEnv);
+                    writeCapacityUnits = 50;
+                }
+            } else {
+                writeCapacityUnits = 50;
+                logger.debug("DYNAMODB_WRITE_CAPACITY_UNITS not set. Defaulting to {}.", writeCapacityUnits);
+            }
+            this.rateLimiter = RateLimiter.create(writeCapacityUnits);
+            logger.info("RateLimiter initialized with {} permits per second.", writeCapacityUnits);
+
         } catch (Exception e) {
             logger.error("Failed to initialize DynamoDBClient: {}", e.getMessage(), e);
             throw e;
@@ -78,15 +100,6 @@ public class DynamoDBClient {
             if (writeRequests.size() == BATCH_SIZE) {
                 executeBatchWrite(new ArrayList<>(writeRequests));
                 writeRequests.clear();
-
-                // Delay between batches to avoid throttling
-                try {
-                    TimeUnit.MILLISECONDS.sleep(BATCH_DELAY_MS);
-                } catch (InterruptedException e) {
-                    logger.error("Interrupted during batch delay: {}", e.getMessage(), e);
-                    Thread.currentThread().interrupt();
-                    return;
-                }
             }
         }
 
@@ -167,6 +180,9 @@ public class DynamoDBClient {
             return;
         }
 
+        // Acquire permits from rate limiter
+        rateLimiter.acquire(writeRequests.size());
+
         Map<String, List<WriteRequest>> requestItems = new HashMap<>();
         requestItems.put(TABLE_NAME, writeRequests);
 
@@ -213,7 +229,7 @@ public class DynamoDBClient {
                 if (!unprocessedItems.isEmpty()) {
                     logger.warn("Unprocessed items remain after retry.");
                     // Delay before next retry
-                    Thread.sleep(BATCH_DELAY_MS);
+                    Thread.sleep(1000);
                 } else {
                     logger.info("All unprocessed items have been processed.");
                 }
