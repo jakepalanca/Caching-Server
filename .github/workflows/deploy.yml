@@ -44,7 +44,22 @@ jobs:
           ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no -v ec2-user@${{ secrets.EC2_HOST }} "echo SSH Connection Successful"
         timeout-minutes: 1
 
-      # 3. Deploy to EC2 (broken down into smaller steps for easier debugging)
+      # 3. Stop the existing Java application instance (Early)
+      - name: Stop existing application instance on EC2 (Early step)
+        run: |
+          echo "Checking for existing Java processes and stopping them if found..."
+          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
+            set -e
+            if pgrep -f 'java -jar' > /dev/null; then
+              echo 'Stopping existing Java process...'
+              pkill -f 'java -jar'
+              echo 'Application instance stopped.'
+            else
+              echo 'No existing Java process found. Skipping stop command.'
+            fi
+          "
+
+      # 4. Deploy to EC2 (broken down into smaller steps for easier debugging)
       - name: Navigate to Caching-Server directory on EC2
         run: |
           echo "Navigating to project directory on EC2..."
@@ -80,21 +95,6 @@ jobs:
             cd /home/ec2-user/Caching-Server
             mvn clean install
             echo 'Build completed.'
-          "
-
-      # Stop the existing application instance on EC2 if a Java process is running
-      - name: Stop the existing application instance on EC2
-        run: |
-          echo "Checking for existing Java processes..."
-          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
-            set -e
-            if pgrep -f 'java -jar' > /dev/null; then
-              echo 'Stopping existing Java process...'
-              pkill -f 'java -jar'
-              echo 'Application instance stopped.'
-            else
-              echo 'No existing Java process found. Skipping stop command.'
-            fi
           "
 
       # Start the new application instance on EC2 with environment variables
