@@ -34,7 +34,7 @@ jobs:
           DEMO_MODE: ${{ secrets.DEMO_MODE }}
           COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
         run: |
-          ssh -i ~/.ssh/Github-Action-1.pem ec2-user@ec2-50-17-144-60.compute-1.amazonaws.com << EOF
+          ssh -i ~/.ssh/Github-Action-1.pem ec2-user@ec2-50-17-144-60.compute-1.amazonaws.com << 'EOF'
             set -e
 
             echo "Starting deployment..."
@@ -44,10 +44,10 @@ jobs:
 
             # Pull the latest code
             git fetch origin master
-            LOCAL=\$(git rev-parse HEAD)
-            REMOTE=\$(git rev-parse origin/master)
+            LOCAL=$(git rev-parse HEAD)
+            REMOTE=$(git rev-parse origin/master)
 
-            if [ "\$LOCAL" = "\$REMOTE" ]; then
+            if [ "$LOCAL" = "$REMOTE" ]; then
               echo "Already up to date."
             else
               git pull origin master
@@ -63,11 +63,15 @@ jobs:
             # Wait to ensure processes have been stopped
             sleep 5
 
+            # Export environment variables
+            export DEMO_MODE="${DEMO_MODE}"
+            export COINGECKO_API_KEY="${COINGECKO_API_KEY}"
+
             # Start the new application instance with environment variables passed as system properties
             echo "Starting new application..."
             nohup java -Dfile.encoding=UTF-8 \
-                -DDEMO_MODE="\$DEMO_MODE" \
-                -DCOINGECKO_API_KEY="\$COINGECKO_API_KEY" \
+                -DDEMO_MODE="$DEMO_MODE" \
+                -DCOINGECKO_API_KEY="$COINGECKO_API_KEY" \
                 -jar target/*.jar > app.log 2>&1 &
 
             echo "Deployment completed successfully."
