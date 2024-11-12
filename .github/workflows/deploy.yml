@@ -23,6 +23,7 @@ jobs:
       # 3. Manually add EC2 host key to known_hosts to prevent SSH authenticity prompts
       - name: Add EC2 Host Key Manually
         run: |
+          mkdir -p ~/.ssh
           echo "${{ secrets.EC2_HOST_KEY }}" >> ~/.ssh/known_hosts
 
       # 4. Deploy to EC2 via SSH securely without hanging
@@ -37,10 +38,14 @@ jobs:
             echo "Deploying application..."
 
             # Navigate to the application directory
-            cd /home/ec2-user/Caching-Server
+            cd /home/ec2-user/Caching-Server || { echo "Directory not found"; exit 1; }
 
             # Pull the latest code
-            git pull origin master
+            if git fetch origin master && git status | grep -q 'up to date'; then
+              echo "Already up to date."
+            else
+              git pull origin master
+            fi
 
             # Build the project
             mvn clean install
@@ -48,6 +53,9 @@ jobs:
             # Stop any existing application instance safely
             echo "Stopping existing application..."
             pkill -f 'java -jar' || echo "No existing application process found."
+
+            # Wait to ensure processes have been stopped
+            sleep 5
 
             # Start the new application instance with a secure configuration
             echo "Starting new application..."
