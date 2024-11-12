@@ -24,7 +24,14 @@ jobs:
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/Github-Action-1.pem
           ssh-keyscan -H ec2-50-17-144-60.compute-1.amazonaws.com >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
           echo "SSH keys set up completed."
+
+      # 3. Configure git user explicitly (in case git commands are failing due to identity issues)
+      - name: Set up Git User
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
 
       # Optional: Test SSH Connection
       - name: Test SSH Connection
@@ -33,23 +40,22 @@ jobs:
           ssh -o StrictHostKeyChecking=no ec2-user@ec2-50-17-144-60.compute-1.amazonaws.com "echo SSH Connection Successful"
           echo "SSH connection test completed."
 
-      # 3. Deploy to EC2
-      - name: Deploy to EC2
+      # 4. Deploy to EC2 (split into smaller steps for debugging)
+      - name: Navigate to Caching-Server directory on EC2
         run: |
-          echo "Deploying to EC2..."
+          echo "Navigating to project directory on EC2..."
           ssh -o StrictHostKeyChecking=no ec2-user@ec2-50-17-144-60.compute-1.amazonaws.com "
             set -e
-
-            echo 'Starting deployment...'
-
-            # Export environment variables
-            export DEMO_MODE='${{ secrets.DEMO_MODE }}'
-            export COINGECKO_API_KEY='${{ secrets.COINGECKO_API_KEY }}'
-
-            # Navigate to the application directory
             cd /home/ec2-user/Caching-Server || { echo 'Directory not found'; exit 1; }
+            echo 'Navigated to project directory.'
+          "
 
-            # Pull the latest code
+      - name: Pull the latest code on EC2
+        run: |
+          echo "Pulling the latest code..."
+          ssh -o StrictHostKeyChecking=no ec2-user@ec2-50-17-144-60.compute-1.amazonaws.com "
+            set -e
+            cd /home/ec2-user/Caching-Server
             git fetch origin master
             LOCAL=\$(git rev-parse HEAD)
             REMOTE=\$(git rev-parse origin/master)
@@ -59,22 +65,35 @@ jobs:
             else
               git pull origin master
             fi
-
-            # Build the project
-            echo 'Building the project...'
-            mvn clean install
-
-            # Stop any existing application instance safely
-            echo 'Stopping existing application...'
-            pkill -f 'java -jar' || echo 'No existing application process found.'
-
-            # Wait to ensure processes have been stopped
-            sleep 5
-
-            # Start the new application instance with environment variables
-            echo 'Starting new application...'
-            nohup java -Dfile.encoding=UTF-8 -jar target/*.jar > app.log 2>&1 &
-
-            echo 'Deployment completed successfully.'
+            echo 'Git pull completed.'
           "
-          echo "Deployment to EC2 completed."
+
+      - name: Build the project on EC2
+        run: |
+          echo "Building the project..."
+          ssh -o StrictHostKeyChecking=no ec2-user@ec2-50-17-144-60.compute-1.amazonaws.com "
+            set -e
+            cd /home/ec2-user/Caching-Server
+            mvn clean install
+            echo 'Build completed.'
+          "
+
+      - name: Stop the existing application instance on EC2
+        run: |
+          echo "Stopping existing application instance..."
+          ssh -o StrictHostKeyChecking=no ec2-user@ec2-50-17-144-60.compute-1.amazonaws.com "
+            set -e
+            pkill -f 'java -jar' || echo 'No existing application process found.'
+            sleep 5
+            echo 'Application instance stopped.'
+          "
+
+      - name: Start the new application instance on EC2
+        run: |
+          echo "Starting new application instance..."
+          ssh -o StrictHostKeyChecking=no ec2-user@ec2-50-17-144-60.compute-1.amazonaws.com "
+            set -e
+            cd /home/ec2-user/Caching-Server
+            nohup java -Dfile.encoding=UTF-8 -jar target/*.jar > app.log 2>&1 &
+            echo 'New application instance started.'
+          "
