@@ -52,8 +52,11 @@ jobs:
             set -e
             if pgrep -f 'java -jar' > /dev/null; then
               echo 'Stopping existing Java process...'
-              pkill -f 'java -jar'
-              echo 'Application instance stopped.'
+              if pkill -f 'java -jar'; then
+                echo 'Java process stopped successfully.'
+              else
+                echo 'Error occurred while stopping Java process, or process may not exist anymore.'
+              fi
             else
               echo 'No existing Java process found. Skipping stop command.'
             fi
