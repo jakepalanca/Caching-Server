@@ -57,10 +57,12 @@ public class CoinGeckoClient {
      * Constructs a new {@code CoinGeckoClient} instance with default configurations.
      */
     public CoinGeckoClient() {
+        logger.debug("Initializing CoinGeckoClient with default configurations.");
         this.client = HttpClients.createDefault();
         this.objectMapper = new ObjectMapper();
         objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        logger.debug("CoinGeckoClient initialized successfully.");
     }
 
     /**
@@ -72,6 +74,7 @@ public class CoinGeckoClient {
      * @throws ParseException if an error occurs while parsing the response
      */
     public List<Coin> fetchCoinsByIds(List<String> coinIds) throws IOException, ParseException {
+        logger.info("Starting fetchCoinsByIds with {} coin IDs.", coinIds.size());
         List<Coin> allCoins = new ArrayList<>();
         int totalBatches = (int) Math.ceil((double) coinIds.size() / 250);
         logger.info("Fetching coins by IDs in {} batches...", totalBatches);
@@ -80,6 +83,7 @@ public class CoinGeckoClient {
             int fromIndex = i * 250;
             int toIndex = Math.min(fromIndex + 250, coinIds.size());
             List<String> batchIds = coinIds.subList(fromIndex, toIndex);
+            logger.debug("Batch {}: Fetching IDs from index {} to {}.", i + 1, fromIndex, toIndex);
 
             String idsParam = String.join(",", batchIds);
             String url = BASE_URL + COINS_MARKETS_ENDPOINT + PARAMETERS + "&ids=" + idsParam;
@@ -87,6 +91,7 @@ public class CoinGeckoClient {
             logger.info("Fetching batch {}/{} for IDs.", batchNumber, totalBatches);
 
             List<Coin> batchCoins = fetchBatch(url, batchNumber);
+            logger.debug("Batch {}/{} fetched {} coins.", batchNumber, totalBatches, batchCoins.size());
             allCoins.addAll(batchCoins);
 
             // Sleep between batches to respect rate limits
@@ -95,13 +100,14 @@ public class CoinGeckoClient {
                     logger.info("Sleeping for {} ms before next batch...", REQUEST_DELAY_MS);
                     Thread.sleep(REQUEST_DELAY_MS);
                 } catch (InterruptedException e) {
-                    logger.error("Sleep interrupted: {}", e.getMessage());
+                    logger.error("Sleep interrupted: {}", e.getMessage(), e);
                     Thread.currentThread().interrupt();
                     throw new IOException("Interrupted during batch fetching", e);
                 }
             }
         }
 
+        logger.info("Completed fetchCoinsByIds. Total coins fetched: {}", allCoins.size());
         return allCoins;
     }
 
@@ -114,14 +120,15 @@ public class CoinGeckoClient {
      * @throws ParseException if an error occurs while parsing the response
      */
     public List<Coin> fetchTopCoins(int numberOfBatches) throws IOException, ParseException {
+        logger.info("Starting fetchTopCoins with {} batches.", numberOfBatches);
         List<Coin> allCoins = new ArrayList<>();
-        logger.info("Fetching top coins in {} batches...", numberOfBatches);
 
         for (int i = 1; i <= numberOfBatches; i++) {
             String url = BASE_URL + COINS_MARKETS_ENDPOINT + PARAMETERS + "&page=" + i;
             logger.info("Fetching top coins batch {}/{}.", i, numberOfBatches);
 
             List<Coin> batchCoins = fetchBatch(url, i);
+            logger.debug("Batch {}/{} fetched {} coins.", i, numberOfBatches, batchCoins.size());
             allCoins.addAll(batchCoins);
 
             // Sleep between batches to respect rate limits
@@ -130,14 +137,14 @@ public class CoinGeckoClient {
                     logger.info("Sleeping for {} ms before next batch...", REQUEST_DELAY_MS);
                     Thread.sleep(REQUEST_DELAY_MS);
                 } catch (InterruptedException e) {
-                    logger.error("Sleep interrupted: {}", e.getMessage());
+                    logger.error("Sleep interrupted: {}", e.getMessage(), e);
                     Thread.currentThread().interrupt();
                     throw new IOException("Interrupted during top coins fetching", e);
                 }
             }
         }
 
-        logger.info("Finished fetching top coins.");
+        logger.info("Completed fetchTopCoins. Total top coins fetched: {}", allCoins.size());
         return allCoins;
     }
 
@@ -151,12 +158,16 @@ public class CoinGeckoClient {
      * @throws ParseException if parsing fails
      */
     private List<Coin> fetchBatch(String url, int batchNumber) throws IOException, ParseException {
+        logger.debug("Preparing HTTP GET request for batch {}: {}", batchNumber, url);
         HttpGet request = new HttpGet(url);
         request.addHeader("accept", "application/json");
 
         // Add API key header if available
         if (API_KEY != null && !API_KEY.isEmpty()) {
             request.addHeader("x-cg-demo-api-key", API_KEY);
+            logger.debug("Added API key header to request for batch {}.", batchNumber);
+        } else {
+            logger.warn("API key is not set. Proceeding without API key for batch {}.", batchNumber);
         }
 
         HttpClientResponseHandler<List<Coin>> responseHandler = getListHttpClientResponseHandler(batchNumber);
@@ -167,7 +178,10 @@ public class CoinGeckoClient {
 
         while (true) {
             try {
-                return client.execute(request, responseHandler);
+                logger.debug("Executing HTTP request for batch {}.", batchNumber);
+                List<Coin> coins = client.execute(request, responseHandler);
+                logger.debug("HTTP request successful for batch {}.", batchNumber);
+                return coins;
             } catch (HttpHostConnectException e) {
                 // Handle connection refused exception
                 retryCount++;
@@ -177,9 +191,10 @@ public class CoinGeckoClient {
                     throw e;
                 }
                 try {
+                    logger.info("Retrying batch {} after {} ms delay.", batchNumber, retryDelay);
                     Thread.sleep(retryDelay);
                 } catch (InterruptedException ie) {
-                    logger.error("Sleep interrupted during retry: {}", ie.getMessage());
+                    logger.error("Sleep interrupted during retry: {}", ie.getMessage(), ie);
                     Thread.currentThread().interrupt();
                     throw new IOException("Interrupted during retry", ie);
                 }
@@ -192,9 +207,10 @@ public class CoinGeckoClient {
                     throw e;
                 }
                 try {
+                    logger.info("Retrying batch {} after {} ms delay.", batchNumber, retryDelay);
                     Thread.sleep(retryDelay);
                 } catch (InterruptedException ie) {
-                    logger.error("Sleep interrupted during retry: {}", ie.getMessage());
+                    logger.error("Sleep interrupted during retry: {}", ie.getMessage(), ie);
                     Thread.currentThread().interrupt();
                     throw new IOException("Interrupted during retry", ie);
                 }
@@ -214,12 +230,13 @@ public class CoinGeckoClient {
 
         return response -> {
             int statusCode = response.getCode();
+            logger.debug("Received HTTP status code {} for batch {}.", statusCode, batchNumber);
             if (statusCode == 200) {
                 String responseBody = org.apache.hc.core5.http.io.entity.EntityUtils.toString(response.getEntity());
                 logger.info("Successfully fetched batch {}.", batchNumber);
                 return parseCoins(responseBody);
             } else {
-                logger.error("Failed to fetch coins, HTTP Code: {}", statusCode);
+                logger.error("Failed to fetch coins for batch {}, HTTP Code: {}", batchNumber, statusCode);
                 throw new IOException("HTTP response code: " + statusCode);
             }
         };
@@ -233,7 +250,10 @@ public class CoinGeckoClient {
      * @throws IOException if an error occurs while parsing the JSON
      */
     private List<Coin> parseCoins(String responseBody) throws IOException {
-        return objectMapper.readValue(responseBody, new TypeReference<List<Coin>>() {});
+        logger.debug("Parsing JSON response into Coin objects.");
+        List<Coin> coins = objectMapper.readValue(responseBody, new TypeReference<List<Coin>>() {});
+        logger.debug("Parsed {} Coin objects from JSON response.", coins.size());
+        return coins;
     }
 
     /**
@@ -242,6 +262,8 @@ public class CoinGeckoClient {
      * @throws IOException if an error occurs while closing the client
      */
     public void close() throws IOException {
+        logger.info("Closing CoinGeckoClient HTTP client.");
         client.close();
+        logger.info("CoinGeckoClient HTTP client closed successfully.");
     }
 }
