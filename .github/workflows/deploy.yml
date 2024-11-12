@@ -35,13 +35,6 @@ jobs:
           chmod 644 $HOME/.ssh/known_hosts
           echo "SSH keys set up completed."
 
-      # Optional: Test SSH Connection Immediately After Setup with enhanced verbosity
-      - name: Test SSH Connection Immediately
-        run: |
-          echo "Testing SSH connection right after setting up the keys..."
-          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no -v ec2-user@${{ secrets.EC2_HOST }} "echo SSH Connection Successful"
-        timeout-minutes: 1
-
       # 3. Stop the existing Java application instance (Improved Version)
       - name: Stop existing application instance on EC2
         run: |
