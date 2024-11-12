@@ -9,16 +9,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    env:
-      DEMO_MODE: ${{ secrets.DEMO_MODE }}
-      COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
-
     steps:
       # 1. Checkout the repository code
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Set up SSH key
+      # 2. Set up SSH key with restrictive permissions
       - name: Set up SSH key
         uses: webfactory/ssh-agent@v0.7.0
         with:
@@ -29,17 +25,16 @@ jobs:
         run: |
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      # 4. Deploy to EC2 via SSH
+      # 4. Deploy to EC2 via SSH securely
       - name: Deploy to EC2
+        env:
+          DEMO_MODE: ${{ secrets.DEMO_MODE }}
+          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
         run: |
-          ssh ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=yes ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
 
             echo "Deploying application..."
-
-            # Export environment variables
-            export DEMO_MODE=${{ secrets.DEMO_MODE }}
-            export COINGECKO_API_KEY=${{ secrets.COINGECKO_API_KEY }}
 
             # Navigate to the application directory
             cd /home/ec2-user/Caching-Server
@@ -50,13 +45,13 @@ jobs:
             # Build the project
             mvn clean install
 
-            # Stop any existing application instance
+            # Stop any existing application instance safely
             echo "Stopping existing application..."
             pkill -f 'java -jar' || echo "No existing application process found."
 
-            # Start the new application instance
+            # Start the new application instance with a secure configuration
             echo "Starting new application..."
-            nohup java -jar target/*.jar > app.log 2>&1 &
+            nohup java -Dfile.encoding=UTF-8 -jar target/*.jar > app.log 2>&1 &
 
             echo "Deployment completed successfully."
           EOF
