@@ -12,14 +12,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Set up SSH key and known hosts with enhanced debugging
+      # 2. Set up SSH key and known hosts
       - name: Set up SSH key and known hosts
         run: |
           echo "Setting up SSH keys..."
           export HOME=/home/runner
           mkdir -p $HOME/.ssh
           
-          # Remove any Windows carriage return characters and save the key
+          # Save the SSH key
           echo "${{ secrets.PEM_FILE }}" | tr -d '\r' > $HOME/.ssh/Github-Action-1.pem
           chmod 400 $HOME/.ssh/Github-Action-1.pem
           
@@ -27,34 +27,31 @@ jobs:
           eval "$(ssh-agent -s)"
           ssh-add $HOME/.ssh/Github-Action-1.pem || { echo "Failed to add SSH key"; exit 1; }
           
-          # Retry ssh-keyscan to prevent network-related issues
-          for i in {1..5}; do
-            ssh-keyscan -H ${{ secrets.EC2_HOST }} >> $HOME/.ssh/known_hosts && break || sleep 2
-          done
-          
+          # Add the EC2 host to known hosts
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> $HOME/.ssh/known_hosts || { echo "Failed to add EC2 host to known hosts"; exit 1; }
           chmod 644 $HOME/.ssh/known_hosts
           echo "SSH keys set up completed."
 
-      # 3. Stop the existing Java application instance (Improved Version)
+      # 3. Stop the existing Java application instance
       - name: Stop existing application instance on EC2
         run: |
-          echo "Checking for existing Java processes and stopping them if found..."
+          echo "Stopping existing application instance..."
           ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
             set -e
             PID_FILE=/home/ec2-user/Caching-Server/app.pid
             if [ -f \"$PID_FILE\" ]; then
-              PID=$(cat $PID_FILE)
-              if ps -p $PID > /dev/null; then
-                echo 'Stopping existing Java process with PID: ' $PID
-                kill -15 $PID
+              PID=\$(cat $PID_FILE)
+              if ps -p \$PID > /dev/null; then
+                echo 'Stopping Java process with PID: ' \$PID
+                kill -15 \$PID
                 sleep 5
-                if ps -p $PID > /dev/null; then
+                if ps -p \$PID > /dev/null; then
                   echo 'Force killing Java process...'
-                  kill -9 $PID
+                  kill -9 \$PID
                 fi
                 echo 'Java process stopped successfully.'
               else
-                echo 'Process ID not found. Java process may not be running.'
+                echo 'Java process is not running.'
               fi
               rm -f $PID_FILE
             else
@@ -62,70 +59,54 @@ jobs:
             fi
           "
 
-      # 4. Deploy to EC2 (broken down into smaller steps for easier debugging)
-      - name: Navigate to Caching-Server directory on EC2
+      # 4. Deploy updated code to EC2
+      - name: Deploy latest code to EC2
         run: |
-          echo "Navigating to project directory on EC2..."
+          echo "Deploying the latest code to EC2..."
           ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
             set -e
             cd /home/ec2-user/Caching-Server || { echo 'Directory not found'; exit 1; }
-            echo 'Navigated to project directory.'
-          "
 
-      - name: Pull the latest code on EC2
-        run: |
-          echo "Pulling the latest code..."
-          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
-            set -e
-            cd /home/ec2-user/Caching-Server
+            echo 'Pulling latest code from Git...'
             git fetch origin master
-            LOCAL=$(git rev-parse HEAD)
-            REMOTE=$(git rev-parse origin/master)
-
-            if [ \"$LOCAL\" = \"$REMOTE\" ]; then
-              echo 'Already up to date.'
+            LOCAL=\$(git rev-parse HEAD)
+            REMOTE=\$(git rev-parse origin/master)
+            if [ \"\$LOCAL\" != \"\$REMOTE\" ]; then
+              git pull origin master || { echo 'Git pull failed'; exit 1; }
             else
-              git pull origin master
+              echo 'Already up to date.'
             fi
-            echo 'Git pull completed.'
+
+            echo 'Building the project...'
+            mvn clean install || { echo 'Build failed'; exit 1; }
           "
 
-      - name: Build the project on EC2
+      # 5. Start the new application instance on EC2
+      - name: Start new application instance on EC2
         run: |
-          echo "Building the project..."
-          ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
-            set -e
-            cd /home/ec2-user/Caching-Server
-            mvn clean install
-            echo 'Build completed.'
-          "
-
-      # Start the new application instance on EC2 with environment variables
-      - name: Start the new application instance on EC2 with environment variables
-        run: |
-          echo "Starting new application instance with environment variables..."
+          echo "Starting new application instance..."
           ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
             set -e
             cd /home/ec2-user/Caching-Server
 
-            # Define constants for environment variables
+            # Define environment variables
             COINGECKO_REQUEST_DELAY_MS=15000
             COINGECKO_NUMBER_OF_BATCHES=4
             FETCH_COIN_INTERVAL_SECONDS=60
             UPDATE_DYNAMODB_INTERVAL_SECONDS=30
             DYNAMODB_WRITE_CAPACITY_UNITS=50
 
-            # Start the application with environment variables
+            echo 'Starting application...'
             nohup java -Dfile.encoding=UTF-8 \
               -Ddemo.mode=\"${{ secrets.DEMO_MODE }}\" \
               -Dcoingecko.api.key=\"${{ secrets.COINGECKO_API_KEY }}\" \
-              -Dcoingecko.request.delay.ms=${COINGECKO_REQUEST_DELAY_MS} \
-              -Dcoingecko.number.of.batches=${COINGECKO_NUMBER_OF_BATCHES} \
-              -Dfetch.coin.interval.seconds=${FETCH_COIN_INTERVAL_SECONDS} \
-              -Dupdate.dynamodb.interval.seconds=${UPDATE_DYNAMODB_INTERVAL_SECONDS} \
-              -Ddynamodb.write.capacity.units=${DYNAMODB_WRITE_CAPACITY_UNITS} \
+              -Dcoingecko.request.delay.ms=\${COINGECKO_REQUEST_DELAY_MS} \
+              -Dcoingecko.number.of.batches=\${COINGECKO_NUMBER_OF_BATCHES} \
+              -Dfetch.coin.interval.seconds=\${FETCH_COIN_INTERVAL_SECONDS} \
+              -Dupdate.dynamodb.interval.seconds=\${UPDATE_DYNAMODB_INTERVAL_SECONDS} \
+              -Ddynamodb.write.capacity.units=\${DYNAMODB_WRITE_CAPACITY_UNITS} \
               -jar target/*.jar > app.log 2>&1 &
 
-            echo $! > app.pid
-            echo 'New application instance started.'
+            echo \$! > app.pid
+            echo 'New application instance started successfully.'
           "
