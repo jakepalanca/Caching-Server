@@ -21,7 +21,7 @@
     <dependency>
       <groupId>io.github.jakepalanca.common</groupId>
       <artifactId>common-models</artifactId>
-      <version>1.2.2</version>
+      <version>1.2.3</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents.client5/httpclient5 -->
@@ -126,7 +126,6 @@
       <version>32.0.0-jre</version>
     </dependency>
 
-
   </dependencies>
 
   <build>
@@ -183,12 +182,6 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.4.0</version>
-        <configuration>
-          <environmentVariables>
-            <BASIC_AUTH_USERNAME>testuser</BASIC_AUTH_USERNAME>
-            <BASIC_AUTH_PASSWORD>testpassword</BASIC_AUTH_PASSWORD>
-          </environmentVariables>
-        </configuration>
       </plugin>
 
       <!-- Kotlin Maven Plugin -->
