@@ -1,12 +1,12 @@
 package jakepalanca.caching.server;
 
-import jakepalanca.common.Coin;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -54,7 +54,7 @@ public class MainApplication {
         }
 
         // Initialize a thread-safe queue for inter-job communication
-        BlockingQueue<List<Coin>> coinQueue = new LinkedBlockingQueue<>();
+        BlockingQueue<List<Map<String, Object>>> coinQueue = new LinkedBlockingQueue<>();
 
         // Schedule FetchCoinJob
         scheduleFetchCoinJob(coinGeckoClient, coinQueue);
@@ -71,7 +71,7 @@ public class MainApplication {
      * @param coinGeckoClient the CoinGeckoClient instance
      * @param coinQueue       the shared BlockingQueue for passing coin data
      */
-    private static void scheduleFetchCoinJob(CoinGeckoClient coinGeckoClient, BlockingQueue<List<Coin>> coinQueue) {
+    private static void scheduleFetchCoinJob(CoinGeckoClient coinGeckoClient, BlockingQueue<List<Map<String, Object>>> coinQueue) {
         logger.info("Scheduling FetchCoinJob...");
 
         try {
@@ -138,7 +138,7 @@ public class MainApplication {
      * @param dynamoDBClient the DynamoDBClient instance
      * @param coinQueue      the shared BlockingQueue for receiving coin data
      */
-    private static void scheduleUpdateDynamoDBJob(DynamoDBClient dynamoDBClient, BlockingQueue<List<Coin>> coinQueue) {
+    private static void scheduleUpdateDynamoDBJob(DynamoDBClient dynamoDBClient, BlockingQueue<List<Map<String, Object>>> coinQueue) {
         logger.info("Scheduling UpdateDynamoDBJob...");
 
         try {

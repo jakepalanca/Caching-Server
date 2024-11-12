@@ -1,18 +1,13 @@
 package jakepalanca.caching.server;
 
-import jakepalanca.common.Coin;
-import jakepalanca.common.Roi;
-import jakepalanca.common.SparklineIn7d;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -44,11 +39,11 @@ public class DynamoDBClient {
     }
 
     /**
-     * Saves or updates a list of Coins in the DynamoDB table using batch write operations.
+     * Saves or updates a list of coins in the DynamoDB table using batch write operations.
      *
-     * @param coins the list of Coin objects to be saved or updated
+     * @param coins the list of coin data maps to be saved or updated
      */
-    public void saveOrUpdateCoins(List<Coin> coins) {
+    public void saveOrUpdateCoins(List<Map<String, Object>> coins) {
         if (coins == null || coins.isEmpty()) {
             logger.warn("No coins provided to save or update.");
             return;
@@ -57,15 +52,15 @@ public class DynamoDBClient {
         logger.info("Starting saveOrUpdateCoins for {} coins.", coins.size());
         List<WriteRequest> writeRequests = new ArrayList<>();
 
-        for (Coin coin : coins) {
-            if (coin == null) {
-                logger.warn("Encountered a null Coin object. Skipping.");
+        for (Map<String, Object> coinData : coins) {
+            if (coinData == null) {
+                logger.warn("Encountered a null coin data map. Skipping.");
                 continue;
             }
 
-            Map<String, AttributeValue> itemValues = mapCoinToAttributeValues(coin);
+            Map<String, AttributeValue> itemValues = mapCoinToAttributeValues(coinData);
             if (itemValues == null || itemValues.isEmpty()) {
-                logger.warn("Mapped itemValues are empty for coin ID: {}. Skipping.", coin.getId());
+                logger.warn("Mapped itemValues are empty for coin data. Skipping.");
                 continue;
             }
 
@@ -86,7 +81,7 @@ public class DynamoDBClient {
 
                 // Delay between batches to avoid throttling
                 try {
-                    Thread.sleep(BATCH_DELAY_MS);
+                    TimeUnit.MILLISECONDS.sleep(BATCH_DELAY_MS);
                 } catch (InterruptedException e) {
                     logger.error("Interrupted during batch delay: {}", e.getMessage(), e);
                     Thread.currentThread().interrupt();
@@ -104,87 +99,61 @@ public class DynamoDBClient {
     }
 
     /**
-     * Maps a Coin object to DynamoDB AttributeValue map.
+     * Maps a coin data map to DynamoDB AttributeValue map.
      *
-     * @param coin the Coin object to map
+     * @param coinData the coin data map to map
      * @return a map of attribute names to AttributeValue
      */
-    private Map<String, AttributeValue> mapCoinToAttributeValues(Coin coin) {
+    private Map<String, AttributeValue> mapCoinToAttributeValues(Map<String, Object> coinData) {
         Map<String, AttributeValue> itemValues = new HashMap<>();
         try {
-            itemValues.put("id", AttributeValue.builder().s(coin.getId()).build());
-
-            if (coin.getSymbol() != null) {
-                itemValues.put("symbol", AttributeValue.builder().s(coin.getSymbol()).build());
-            }
-            if (coin.getName() != null) {
-                itemValues.put("name", AttributeValue.builder().s(coin.getName()).build());
-            }
-            if (coin.getImage() != null) {
-                itemValues.put("image", AttributeValue.builder().s(coin.getImage()).build());
-            }
-            if (coin.getAthDate() != null) {
-                itemValues.put("ath_date", AttributeValue.builder().s(coin.getAthDate()).build());
-            }
-            if (coin.getAtlDate() != null) {
-                itemValues.put("atl_date", AttributeValue.builder().s(coin.getAtlDate()).build());
-            }
-            if (coin.getLastUpdated() != null) {
-                itemValues.put("last_updated", AttributeValue.builder().s(coin.getLastUpdated()).build());
-            }
-
-            if (coin.getCurrentPrice() != null) {
-                itemValues.put("current_price", AttributeValue.builder().n(String.valueOf(coin.getCurrentPrice())).build());
-            }
-            if (coin.getMarketCap() != null) {
-                itemValues.put("market_cap", AttributeValue.builder().n(String.valueOf(coin.getMarketCap())).build());
-            }
-            if (coin.getMarketCapRank() != null) {
-                itemValues.put("market_cap_rank", AttributeValue.builder().n(String.valueOf(coin.getMarketCapRank())).build());
-            }
-            if (coin.getFullyDilutedValuation() != null) {
-                itemValues.put("fully_diluted_valuation", AttributeValue.builder().n(String.valueOf(coin.getFullyDilutedValuation())).build());
-            }
-            if (coin.getTotalVolume() != null) {
-                itemValues.put("total_volume", AttributeValue.builder().n(String.valueOf(coin.getTotalVolume())).build());
-            }
-            if (coin.getHigh24h() != null) {
-                itemValues.put("high_24h", AttributeValue.builder().n(String.valueOf(coin.getHigh24h())).build());
-            }
-            if (coin.getLow24h() != null) {
-                itemValues.put("low_24h", AttributeValue.builder().n(String.valueOf(coin.getLow24h())).build());
-            }
-
-            // Handle ROI if present
-            Roi roi = coin.getRoi();
-            if (roi != null) {
-                if (roi.getCurrency() != null) {
-                    itemValues.put("roi_currency", AttributeValue.builder().s(roi.getCurrency()).build());
-                }
-                if (roi.getTimes() != null) {
-                    itemValues.put("roi_times", AttributeValue.builder().n(String.valueOf(roi.getTimes())).build());
-                }
-                if (roi.getPercentage() != null) {
-                    itemValues.put("roi_percentage", AttributeValue.builder().n(String.valueOf(roi.getPercentage())).build());
+            for (Map.Entry<String, Object> entry : coinData.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+                AttributeValue attributeValue = convertToAttributeValue(value);
+                if (attributeValue != null) {
+                    itemValues.put(key, attributeValue);
                 }
             }
-
-            // Handle Sparkline data
-            SparklineIn7d sparkline = coin.getSparklineIn7d();
-            if (sparkline != null && sparkline.getPrice() != null) {
-                List<AttributeValue> sparklinePrices = sparkline.getPrice().stream()
-                        .map(price -> AttributeValue.builder().n(String.valueOf(price)).build())
-                        .collect(Collectors.toList());
-
-                itemValues.put("sparkline_in_7d", AttributeValue.builder().l(sparklinePrices).build());
-            }
-
         } catch (Exception e) {
-            logger.error("Error mapping Coin ID {} to AttributeValues: {}", coin.getId(), e.getMessage(), e);
+            logger.error("Error mapping coin data to AttributeValues: {}", e.getMessage(), e);
             return null;
         }
 
         return itemValues;
+    }
+
+    /**
+     * Converts an Object to DynamoDB AttributeValue.
+     *
+     * @param value the object to convert
+     * @return the AttributeValue representation
+     */
+    private AttributeValue convertToAttributeValue(Object value) {
+        if (value == null) {
+            return AttributeValue.builder().nul(true).build();
+        } else if (value instanceof String) {
+            return AttributeValue.builder().s((String) value).build();
+        } else if (value instanceof Number) {
+            return AttributeValue.builder().n(value.toString()).build();
+        } else if (value instanceof Boolean) {
+            return AttributeValue.builder().bool((Boolean) value).build();
+        } else if (value instanceof List) {
+            List<AttributeValue> attrValues = ((List<?>) value).stream()
+                    .map(this::convertToAttributeValue)
+                    .collect(Collectors.toList());
+            return AttributeValue.builder().l(attrValues).build();
+        } else if (value instanceof Map) {
+            Map<String, AttributeValue> mapValues = ((Map<?, ?>) value).entrySet().stream()
+                    .collect(Collectors.toMap(
+                            e -> e.getKey().toString(),
+                            e -> convertToAttributeValue(e.getValue())
+                    ));
+            return AttributeValue.builder().m(mapValues).build();
+        } else {
+            logger.warn("Unsupported attribute type: {}", value.getClass().getName());
+            return null;
+        }
     }
 
     /**
@@ -198,8 +167,11 @@ public class DynamoDBClient {
             return;
         }
 
+        Map<String, List<WriteRequest>> requestItems = new HashMap<>();
+        requestItems.put(TABLE_NAME, writeRequests);
+
         BatchWriteItemRequest batchWriteItemRequest = BatchWriteItemRequest.builder()
-                .requestItems(Map.of(TABLE_NAME, writeRequests))
+                .requestItems(requestItems)
                 .build();
 
         try {
@@ -208,8 +180,9 @@ public class DynamoDBClient {
 
             // Handle unprocessed items
             if (!response.unprocessedItems().isEmpty()) {
-                logger.warn("There are {} unprocessed items. Retrying...", response.unprocessedItems().values().stream().mapToInt(List::size).sum());
+                logger.warn("There are unprocessed items. Retrying...");
                 // Implement retry logic as needed
+                retryUnprocessedItems(response.unprocessedItems());
             }
         } catch (DynamoDbException e) {
             logger.error("DynamoDBException during batch write: {}", e.getMessage(), e);
@@ -218,8 +191,44 @@ public class DynamoDBClient {
         }
     }
 
-    // The rest of the DynamoDBClient remains unchanged
-    // ...
+    /**
+     * Retries unprocessed items from a previous batch write operation.
+     *
+     * @param unprocessedItems the unprocessed items to retry
+     */
+    private void retryUnprocessedItems(Map<String, List<WriteRequest>> unprocessedItems) {
+        int maxRetries = 5;
+        int retryCount = 0;
+
+        while (!unprocessedItems.isEmpty() && retryCount < maxRetries) {
+            try {
+                logger.info("Retrying unprocessed items. Attempt {}/{}", retryCount + 1, maxRetries);
+                BatchWriteItemRequest retryRequest = BatchWriteItemRequest.builder()
+                        .requestItems(unprocessedItems)
+                        .build();
+
+                BatchWriteItemResponse retryResponse = dynamoDbClient.batchWriteItem(retryRequest);
+                unprocessedItems = retryResponse.unprocessedItems();
+
+                if (!unprocessedItems.isEmpty()) {
+                    logger.warn("Unprocessed items remain after retry.");
+                    // Delay before next retry
+                    Thread.sleep(BATCH_DELAY_MS);
+                } else {
+                    logger.info("All unprocessed items have been processed.");
+                }
+            } catch (Exception e) {
+                logger.error("Error during retry of unprocessed items: {}", e.getMessage(), e);
+                break;
+            }
+            retryCount++;
+        }
+
+        if (!unprocessedItems.isEmpty()) {
+            logger.error("Failed to process some items after {} retries.", maxRetries);
+            // Handle the unprocessed items as needed (e.g., log them, alert, etc.)
+        }
+    }
 
     /**
      * Closes the DynamoDB client.

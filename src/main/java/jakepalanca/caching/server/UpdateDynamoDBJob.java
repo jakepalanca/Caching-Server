@@ -1,11 +1,11 @@
 package jakepalanca.caching.server;
 
-import jakepalanca.common.Coin;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 
 /**
@@ -25,7 +25,7 @@ public class UpdateDynamoDBJob implements Job {
         logger.info("UpdateDynamoDBJob triggered. Starting DynamoDB update...");
         JobDataMap dataMap = context.getJobDetail().getJobDataMap();
         DynamoDBClient dynamoDBClient = (DynamoDBClient) dataMap.get("dynamoDBClient");
-        BlockingQueue<List<Coin>> queue = (BlockingQueue<List<Coin>>) dataMap.get("coinQueue");
+        BlockingQueue<List<Map<String, Object>>> queue = (BlockingQueue<List<Map<String, Object>>>) dataMap.get("coinQueue");
 
         if (dynamoDBClient == null || queue == null) {
             logger.error("Dependencies not found in JobDataMap.");
@@ -34,7 +34,7 @@ public class UpdateDynamoDBJob implements Job {
 
         try {
             // Poll the queue with a timeout to prevent blocking indefinitely
-            List<Coin> coinsToUpdate = queue.poll(5, java.util.concurrent.TimeUnit.SECONDS);
+            List<Map<String, Object>> coinsToUpdate = queue.poll(5, java.util.concurrent.TimeUnit.SECONDS);
             if (coinsToUpdate != null && !coinsToUpdate.isEmpty()) {
                 logger.info("Dequeued {} coins for DynamoDB update.", coinsToUpdate.size());
                 dynamoDBClient.saveOrUpdateCoins(coinsToUpdate);

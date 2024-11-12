@@ -1,6 +1,5 @@
 package jakepalanca.caching.server;
 
-import jakepalanca.common.Coin;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 
 /**
@@ -27,7 +27,7 @@ public class FetchCoinJob implements Job {
         logger.info("FetchCoinJob triggered. Starting to fetch coin data...");
         JobDataMap dataMap = context.getJobDetail().getJobDataMap();
         CoinGeckoClient coinGeckoClient = (CoinGeckoClient) dataMap.get("coinGeckoClient");
-        BlockingQueue<List<Coin>> queue = (BlockingQueue<List<Coin>>) dataMap.get("coinQueue");
+        BlockingQueue<List<Map<String, Object>>> queue = (BlockingQueue<List<Map<String, Object>>>) dataMap.get("coinQueue");
 
         if (coinGeckoClient == null || queue == null) {
             logger.error("Dependencies not found in JobDataMap.");
@@ -35,8 +35,8 @@ public class FetchCoinJob implements Job {
         }
 
         try {
-            // Example: Fetch top 1000 coins in 4 batches
-            List<Coin> topCoins = coinGeckoClient.fetchTopCoins(4);
+            // Fetch top coins
+            List<Map<String, Object>> topCoins = coinGeckoClient.fetchTopCoins(4);
             logger.info("Fetched {} top coins.", topCoins.size());
 
             // Enqueue the fetched coins for DynamoDB update
