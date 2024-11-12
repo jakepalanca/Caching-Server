@@ -82,16 +82,22 @@ jobs:
             echo 'Build completed.'
           "
 
+      # Stop the existing application instance on EC2 if a Java process is running
       - name: Stop the existing application instance on EC2
         run: |
-          echo "Stopping existing application instance..."
+          echo "Checking for existing Java processes..."
           ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
             set -e
-            pkill -f 'java -jar' || echo 'No existing application process found.'
-            sleep 5
-            echo 'Application instance stopped.'
+            if pgrep -f 'java -jar' > /dev/null; then
+              echo 'Stopping existing Java process...'
+              pkill -f 'java -jar'
+              echo 'Application instance stopped.'
+            else
+              echo 'No existing Java process found. Skipping stop command.'
+            fi
           "
 
+      # Start the new application instance on EC2 with environment variables
       - name: Start the new application instance on EC2 with environment variables
         run: |
           echo "Starting new application instance with environment variables..."
