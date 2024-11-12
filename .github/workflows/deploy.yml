@@ -44,12 +44,6 @@ jobs:
           ssh -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no -v ec2-user@${{ secrets.EC2_HOST }} "echo SSH Connection Successful"
         timeout-minutes: 1
 
-      # Additional debug to confirm IP reachability
-      - name: Test Instance Availability (Ping)
-        run: |
-          echo "Testing reachability of EC2 instance..."
-          ping -c 4 ${{ secrets.EC2_HOST }} || { echo "Ping to EC2 failed"; exit 1; }
-
       # 3. Deploy to EC2 (broken down into smaller steps for easier debugging)
       - name: Navigate to Caching-Server directory on EC2
         run: |
