@@ -30,14 +30,15 @@ jobs:
 
       # 3. Deploy to EC2
       - name: Deploy to EC2
-        env:
-          DEMO_MODE: ${{ secrets.DEMO_MODE }}
-          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
         run: |
           ssh -i ~/.ssh/Github-Action-1.pem ec2-user@ec2-50-17-144-60.compute-1.amazonaws.com << 'EOF'
             set -e
 
             echo "Starting deployment..."
+
+            # Export environment variables
+            export DEMO_MODE="${{ secrets.DEMO_MODE }}"
+            export COINGECKO_API_KEY="${{ secrets.COINGECKO_API_KEY }}"
 
             # Navigate to the application directory
             cd /home/ec2-user/Caching-Server || { echo "Directory not found"; exit 1; }
@@ -63,16 +64,9 @@ jobs:
             # Wait to ensure processes have been stopped
             sleep 5
 
-            # Export environment variables
-            export DEMO_MODE="${DEMO_MODE}"
-            export COINGECKO_API_KEY="${COINGECKO_API_KEY}"
-
-            # Start the new application instance with environment variables passed as system properties
+            # Start the new application instance with environment variables
             echo "Starting new application..."
-            nohup java -Dfile.encoding=UTF-8 \
-                -DDEMO_MODE="$DEMO_MODE" \
-                -DCOINGECKO_API_KEY="$COINGECKO_API_KEY" \
-                -jar target/*.jar > app.log 2>&1 &
+            nohup java -Dfile.encoding=UTF-8 -jar target/*.jar > app.log 2>&1 &
 
             echo "Deployment completed successfully."
           EOF
