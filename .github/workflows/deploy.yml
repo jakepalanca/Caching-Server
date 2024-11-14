@@ -1,3 +1,5 @@
+name: Deploy to EC2
+
 on:
   push:
     branches:
@@ -12,89 +14,62 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2. Set up SSH key and known hosts without ssh-keyscan
-      - name: Set up SSH key and known hosts
-        run: |
-          echo "Setting up SSH keys..."
-          export HOME=/home/runner
-          mkdir -p $HOME/.ssh
-          
-          # Save the SSH key from GitHub secret and set the correct permissions
-          echo "${{ secrets.PEM_FILE }}" | tr -d '\r' > $HOME/.ssh/Github-Action-1.pem
-          chmod 400 $HOME/.ssh/Github-Action-1.pem
-          
-          # Start the SSH agent and add the key
-          eval "$(ssh-agent -s)"
-          ssh-add $HOME/.ssh/Github-Action-1.pem || { echo "Failed to add SSH key"; exit 1; }
-          
-          # Manually add EC2 host to known_hosts by establishing the fingerprint through the PEM file
-          ssh-keygen -y -f $HOME/.ssh/Github-Action-1.pem > $HOME/.ssh/known_hosts
-          chmod 644 $HOME/.ssh/known_hosts
+      # 2. Set up SSH using a dedicated action
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.PEM_FILE }}
 
-          echo "SSH keys set up completed."
-
-      # 3. SSH into EC2 instance and run commands via smaller, independent commands for better reliability
-      - name: Stop existing Java application instance
-        run: |
-          echo "Stopping existing application instance on EC2..."
-          ssh -tt -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+      # 3. Define a reusable SSH command
+      - name: Execute Deployment Commands
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.PEM_FILE }}
+          script: |
             set -e
+
+            # Stop existing Java application
+            echo "Stopping existing application instance..."
             PID_FILE=/home/ec2-user/Caching-Server/app.pid
             if [ -f "$PID_FILE" ]; then
               PID=$(cat $PID_FILE)
               if ps -p $PID > /dev/null; then
-                echo 'Stopping Java process with PID: ' $PID
+                echo "Stopping Java process with PID: $PID"
                 kill -15 $PID
                 sleep 5
                 if ps -p $PID > /dev/null; then
-                  echo 'Force killing Java process...'
+                  echo "Force killing Java process..."
                   kill -9 $PID
                 fi
-                echo 'Java process stopped successfully.'
+                echo "Java process stopped successfully."
               else
-                echo 'Java process is not running.'
+                echo "Java process is not running."
               fi
               rm -f $PID_FILE
             else
-              echo 'No PID file found. Skipping stop command.'
+              echo "No PID file found. Skipping stop command."
             fi
-          EOF
 
-      - name: Deploy updated code to EC2
-        run: |
-          echo "Deploying the latest code to EC2..."
-          ssh -tt -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
-            set -e
-            cd /home/ec2-user/Caching-Server || { echo 'Directory not found'; exit 1; }
-          
-            echo 'Pulling latest code from Git...'
+            # Deploy updated code
+            echo "Deploying the latest code..."
+            cd /home/ec2-user/Caching-Server
             git fetch origin master
             LOCAL=$(git rev-parse HEAD)
             REMOTE=$(git rev-parse origin/master)
             if [ "$LOCAL" != "$REMOTE" ]; then
-              git pull origin master || { echo 'Git pull failed'; exit 1; }
+              git pull origin master
             else
-              echo 'Already up to date.'
+              echo "Already up to date."
             fi
-          EOF
 
-      - name: Build the project on EC2
-        run: |
-          echo "Building the project..."
-          ssh -tt -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
-            set -e
-            cd /home/ec2-user/Caching-Server
-            mvn clean install || { echo 'Build failed'; exit 1; }
-          EOF
+            # Build the project
+            echo "Building the project..."
+            mvn clean install
 
-      - name: Start new application instance on EC2
-        run: |
-          echo "Starting new application instance..."
-          ssh -tt -i $HOME/.ssh/Github-Action-1.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
-            set -e
-            cd /home/ec2-user/Caching-Server
-
-            # Define environment variables
+            # Start new application instance
+            echo "Starting new application instance..."
             COINGECKO_REQUEST_DELAY_MS=15000
             COINGECKO_NUMBER_OF_BATCHES=4
             FETCH_COIN_INTERVAL_SECONDS=60
@@ -112,5 +87,4 @@ jobs:
               -jar target/*.jar > app.log 2>&1 &
 
             echo $! > app.pid
-            echo 'New application instance started successfully.'
-          EOF
+            echo "New application instance started successfully."
