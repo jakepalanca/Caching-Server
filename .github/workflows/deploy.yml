@@ -20,7 +20,7 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.PEM_FILE }}
 
-      # 3. Define a reusable SSH command
+      # 3. Execute Deployment Commands
       - name: Execute Deployment Commands
         uses: appleboy/ssh-action@v0.1.7
         with:
@@ -88,3 +88,6 @@ jobs:
 
             echo $! > app.pid
             echo "New application instance started successfully."
+
+            # Explicitly exit to prevent hanging
+            exit 0
