@@ -79,6 +79,9 @@ public class DynamoDBClient implements AutoCloseable {
                 continue;
             }
 
+            // Data Sanitization
+            sanitizeCoinData(coinData);
+
             Map<String, AttributeValue> itemValues = mapCoinToAttributeValues(coinData);
             if (itemValues == null || itemValues.isEmpty()) {
                 logger.warn("Mapped itemValues are empty for coin data. Skipping.");
@@ -108,6 +111,63 @@ public class DynamoDBClient implements AutoCloseable {
         }
 
         logger.info("Completed saveOrUpdateCoins for {} coins.", coins.size());
+    }
+
+    /**
+     * Sanitizes coin data to ensure correct data types and handle null values.
+     *
+     * @param coinData the coin data map to sanitize
+     */
+    private void sanitizeCoinData(Map<String, Object> coinData) {
+        // List of numeric fields that should be Numbers or null
+        String[] numericFields = {
+                "current_price", "market_cap", "market_cap_rank", "fully_diluted_valuation",
+                "total_volume", "high_24h", "low_24h", "price_change_24h",
+                "price_change_percentage_24h", "price_change_percentage_24h_in_currency",
+                "price_change_percentage_1h_in_currency", "price_change_percentage_7d_in_currency",
+                "price_change_percentage_14d_in_currency", "price_change_percentage_30d_in_currency",
+                "price_change_percentage_200d_in_currency", "price_change_percentage_1y_in_currency",
+                "market_cap_change_24h", "market_cap_change_percentage_24h", "circulating_supply",
+                "total_supply", "max_supply", "ath", "ath_change_percentage", "atl",
+                "atl_change_percentage"
+        };
+
+        for (String field : numericFields) {
+            Object value = coinData.get(field);
+            if (!(value instanceof Number)) {
+                if (value instanceof String) {
+                    try {
+                        coinData.put(field, Double.parseDouble((String) value));
+                        logger.debug("Parsed '{}' field from String to Double.", field);
+                    } catch (NumberFormatException e) {
+                        logger.warn("Unable to parse '{}' field from String to Double. Setting to null.", field);
+                        coinData.put(field, null);
+                    }
+                } else {
+                    logger.warn("Setting '{}' field to null due to invalid type: {}", field, value.getClass().getName());
+                    coinData.put(field, null);
+                }
+            }
+        }
+
+        // Handle sparkline_in_7d field, ensure it's a List<Double>
+        Object sparkline = coinData.get("sparkline_in_7d");
+        if (sparkline instanceof Map) {
+            Map<?, ?> sparklineMap = (Map<?, ?>) sparkline;
+            Object priceList = sparklineMap.get("price");
+            if (priceList instanceof List) {
+                coinData.put("sparkline_in_7d", priceList);
+                logger.debug("Parsed 'sparkline_in_7d' field from Map to List<Double>.");
+            } else {
+                logger.warn("'sparkline_in_7d' field is not a List. Setting to null.");
+                coinData.put("sparkline_in_7d", null);
+            }
+        } else if (!(sparkline instanceof List)) {
+            logger.warn("'sparkline_in_7d' field is not a List. Setting to null.");
+            coinData.put("sparkline_in_7d", null);
+        }
+
+        // Additional field sanitization as needed
     }
 
     /**
@@ -151,7 +211,12 @@ public class DynamoDBClient implements AutoCloseable {
         } else if (value instanceof Boolean) {
             return AttributeValue.builder().bool((Boolean) value).build();
         } else if (value instanceof List) {
-            List<AttributeValue> attrValues = ((List<?>) value).stream()
+            List<Object> list = (List<Object>) value;
+            if (list.isEmpty()) {
+                // Handle empty list as NULL
+                return AttributeValue.builder().nul(true).build();
+            }
+            List<AttributeValue> attrValues = list.stream()
                     .map(this::convertToAttributeValue)
                     .collect(Collectors.toList());
             return AttributeValue.builder().l(attrValues).build();
