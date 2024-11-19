@@ -8,12 +8,13 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
  * Handles interactions with DynamoDB for storing and retrieving Coin data.
  */
-public class DynamoDBClient {
+public class DynamoDBClient implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(DynamoDBClient.class);
     private final DynamoDbClient dynamoDbClient;
@@ -179,9 +180,6 @@ public class DynamoDBClient {
             return;
         }
 
-        // Acquire permits from rate limiter
-        rateLimiter.acquire(writeRequests.size());
-
         Map<String, List<WriteRequest>> requestItems = new HashMap<>();
         requestItems.put(TABLE_NAME, writeRequests);
 
@@ -189,67 +187,50 @@ public class DynamoDBClient {
                 .requestItems(requestItems)
                 .build();
 
-        try {
-            BatchWriteItemResponse response = dynamoDbClient.batchWriteItem(batchWriteItemRequest);
-            logger.info("Batch write executed. Unprocessed items count: {}", response.unprocessedItems().size());
-
-            // Handle unprocessed items
-            if (!response.unprocessedItems().isEmpty()) {
-                logger.warn("There are unprocessed items. Retrying...");
-                // Implement retry logic as needed
-                retryUnprocessedItems(response.unprocessedItems());
-            }
-        } catch (DynamoDbException e) {
-            logger.error("DynamoDBException during batch write: {}", e.getMessage(), e);
-        } catch (Exception e) {
-            logger.error("Unexpected exception during batch write: {}", e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Retries unprocessed items from a previous batch write operation using exponential backoff with jitter.
-     *
-     * @param unprocessedItems the unprocessed items to retry
-     */
-    private void retryUnprocessedItems(Map<String, List<WriteRequest>> unprocessedItems) {
-        int maxRetries = 5;
         int retryCount = 0;
-        Random random = new Random();
+        int maxRetries = 5;
 
-        while (!unprocessedItems.isEmpty() && retryCount < maxRetries) {
+        while (retryCount < maxRetries) {
+            // Acquire permits from rate limiter
+            rateLimiter.acquire(writeRequests.size());
+
             try {
-                long sleepTime = (long) (Math.pow(2, retryCount) * 1000) + random.nextInt(1000);
-                logger.info("Retrying unprocessed items after {} ms. Attempt {}/{}", sleepTime, retryCount + 1, maxRetries);
-                Thread.sleep(sleepTime);
+                BatchWriteItemResponse response = dynamoDbClient.batchWriteItem(batchWriteItemRequest);
+                logger.info("Batch write executed. Unprocessed items count: {}", response.unprocessedItems().size());
 
-                BatchWriteItemRequest retryRequest = BatchWriteItemRequest.builder()
-                        .requestItems(unprocessedItems)
-                        .build();
-
-                BatchWriteItemResponse retryResponse = dynamoDbClient.batchWriteItem(retryRequest);
-                unprocessedItems = retryResponse.unprocessedItems();
-
-                if (!unprocessedItems.isEmpty()) {
-                    logger.warn("Unprocessed items remain after retry.");
+                if (response.unprocessedItems().isEmpty()) {
+                    logger.info("All items processed successfully.");
+                    break;
                 } else {
-                    logger.info("All unprocessed items have been processed.");
+                    logger.warn("Retrying unprocessed items...");
+                    batchWriteItemRequest = BatchWriteItemRequest.builder()
+                            .requestItems(response.unprocessedItems())
+                            .build();
+                    retryCount++;
+                    TimeUnit.SECONDS.sleep((long) Math.pow(2, retryCount)); // Exponential backoff
                 }
+            } catch (DynamoDbException e) {
+                logger.error("DynamoDBException during batch write: {}", e.getMessage(), e);
+                break;
+            } catch (InterruptedException e) {
+                logger.error("Interrupted during batch write: {}", e.getMessage(), e);
+                Thread.currentThread().interrupt();
+                break;
             } catch (Exception e) {
-                logger.error("Error during retry of unprocessed items: {}", e.getMessage(), e);
+                logger.error("Unexpected exception during batch write: {}", e.getMessage(), e);
                 break;
             }
-            retryCount++;
         }
 
-        if (!unprocessedItems.isEmpty()) {
-            logger.error("Failed to process some items after {} retries.", maxRetries);
-            // Handle the unprocessed items as needed (e.g., log them, alert, etc.)
+        if (retryCount == maxRetries) {
+            logger.error("Failed to process items after {} retries.", maxRetries);
         }
     }
 
     /**
      * Closes the DynamoDB client.
      */
+    @Override
     public void close() {
         if (dynamoDbClient != null) {
             dynamoDbClient.close();

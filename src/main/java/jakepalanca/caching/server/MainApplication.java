@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ArrayBlockingQueue;
 
 import static org.quartz.JobBuilder.newJob;
 import static org.quartz.TriggerBuilder.newTrigger;
@@ -18,7 +18,6 @@ import static org.quartz.TriggerBuilder.newTrigger;
  * The main entry point of the application. Initializes clients and schedules jobs.
  */
 public class MainApplication {
-
     private static final Logger logger = LoggerFactory.getLogger(MainApplication.class);
 
     public static void main(String[] args) {
@@ -53,8 +52,8 @@ public class MainApplication {
             System.exit(1);
         }
 
-        // Initialize a thread-safe queue for inter-job communication
-        BlockingQueue<List<Map<String, Object>>> coinQueue = new LinkedBlockingQueue<>();
+        // Initialize a bounded thread-safe queue for inter-job communication
+        BlockingQueue<List<Map<String, Object>>> coinQueue = new ArrayBlockingQueue<>(10);
 
         // Initialize Scheduler
         Scheduler scheduler = initializeScheduler();
@@ -136,7 +135,7 @@ public class MainApplication {
                     .build();
             logger.debug("FetchCoinJob detail created with JobDataMap.");
 
-            int intervalInSeconds = getIntervalFromEnv("FETCH_COIN_INTERVAL_SECONDS", 60);
+            int intervalInSeconds = getIntervalFromEnv("FETCH_COIN_INTERVAL_SECONDS", 300);
 
             Trigger trigger = newTrigger()
                     .startNow()
@@ -176,7 +175,7 @@ public class MainApplication {
                     .build();
             logger.debug("UpdateDynamoDBJob detail created with JobDataMap.");
 
-            int intervalInSeconds = getIntervalFromEnv("UPDATE_DYNAMODB_INTERVAL_SECONDS", 30);
+            int intervalInSeconds = getIntervalFromEnv("UPDATE_DYNAMODB_INTERVAL_SECONDS", 60);
 
             Trigger trigger = newTrigger()
                     .startNow()

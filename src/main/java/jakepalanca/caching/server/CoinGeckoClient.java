@@ -20,7 +20,7 @@ import java.util.Map;
  * The {@code CoinGeckoClient} class provides methods to interact with the CoinGecko API.
  * It fetches cryptocurrency data, handling batching and rate limits.
  */
-public class CoinGeckoClient {
+public class CoinGeckoClient implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(CoinGeckoClient.class);
 
@@ -39,7 +39,7 @@ public class CoinGeckoClient {
             VS_CURRENCY, LOCALIZATION);
 
     // Default delay between API requests in milliseconds to respect rate limits
-    private static final int DEFAULT_REQUEST_DELAY_MS = 15000;
+    private static final int DEFAULT_REQUEST_DELAY_MS = 60000; // 60 seconds per CoinGecko free API limits
     private static final int REQUEST_DELAY_MS;
 
     static {
@@ -127,10 +127,18 @@ public class CoinGeckoClient {
         HttpGet request = new HttpGet(url);
         request.addHeader("accept", "application/json");
 
-        // Add API key header if available
+        // Add API key header if available, conditional on DEMO_MODE
+        String demoModeEnv = System.getenv("DEMO_MODE");
+        boolean demoMode = demoModeEnv != null && demoModeEnv.equalsIgnoreCase("true");
+
         if (API_KEY != null && !API_KEY.isEmpty()) {
-            request.addHeader("x_cg_demo_api_key", API_KEY); // Updated header name
-            logger.debug("Added API key header to request for batch {}.", batchNumber);
+            if (demoMode) {
+                request.addHeader("x_cg_demo_api_key", API_KEY);
+                logger.debug("Added demo API key header to request for batch {}.", batchNumber);
+            } else {
+                request.addHeader("x-cg-pro-api-key", API_KEY);
+                logger.debug("Added pro API key header to request for batch {}.", batchNumber);
+            }
         } else {
             logger.warn("API key is not set. Proceeding without API key for batch {}.", batchNumber);
         }
@@ -200,6 +208,9 @@ public class CoinGeckoClient {
                 String responseBody = org.apache.hc.core5.http.io.entity.EntityUtils.toString(response.getEntity());
                 logger.info("Successfully fetched batch {}.", batchNumber);
                 return parseCoins(responseBody);
+            } else if (statusCode == 429) {
+                logger.error("Rate limit exceeded for batch {}. HTTP Code: {}", batchNumber, statusCode);
+                throw new IOException("Rate limit exceeded");
             } else {
                 logger.error("Failed to fetch coins for batch {}, HTTP Code: {}", batchNumber, statusCode);
                 throw new IOException("HTTP response code: " + statusCode);
@@ -223,9 +234,8 @@ public class CoinGeckoClient {
 
     /**
      * Closes the HTTP client and releases resources.
-     *
-     * @throws IOException if an error occurs while closing the client
      */
+    @Override
     public void close() {
         try {
             logger.info("Closing CoinGeckoClient HTTP client.");
