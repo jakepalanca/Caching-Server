@@ -118,8 +118,7 @@ public class DynamoDBClient implements AutoCloseable {
      *
      * @param coinData the coin data map to sanitize
      */
-    private void sanitizeCoinData(Map<String, Object> coinData) {
-        // List of numeric fields that should be Numbers or null
+    private Map<String, Object> sanitizeCoinData(Map<String, Object> coinData) {
         String[] numericFields = {
                 "current_price", "market_cap", "market_cap_rank", "fully_diluted_valuation",
                 "total_volume", "high_24h", "low_24h", "price_change_24h",
@@ -134,40 +133,63 @@ public class DynamoDBClient implements AutoCloseable {
 
         for (String field : numericFields) {
             Object value = coinData.get(field);
-            if (!(value instanceof Number)) {
-                if (value instanceof String) {
-                    try {
-                        coinData.put(field, Double.parseDouble((String) value));
-                        logger.debug("Parsed '{}' field from String to Double.", field);
-                    } catch (NumberFormatException e) {
-                        logger.warn("Unable to parse '{}' field from String to Double. Setting to null.", field);
+            if (value instanceof Number) {
+                // Value is already a number; do nothing.
+            } else if (value instanceof String) {
+                try {
+                    coinData.put(field, Double.parseDouble((String) value));
+                    logger.debug("Parsed '{}' field from String to Double.", field);
+                } catch (NumberFormatException e) {
+                    logger.warn("Unable to parse '{}' field from String to Double. Setting to null.", field);
+                    coinData.put(field, null);
+                }
+            } else if (value instanceof List) {
+                // Attempt to extract a number from the list.
+                List<?> valueList = (List<?>) value;
+                if (!valueList.isEmpty()) {
+                    Object firstElement = valueList.get(0);
+                    if (firstElement instanceof Number) {
+                        coinData.put(field, ((Number) firstElement).doubleValue());
+                        logger.warn("Field '{}' was a list. Extracted number: {}", field, coinData.get(field));
+                    } else if (firstElement instanceof String) {
+                        try {
+                            coinData.put(field, Double.parseDouble((String) firstElement));
+                            logger.warn("Field '{}' was a list. Parsed number from string: {}", field, coinData.get(field));
+                        } catch (NumberFormatException e) {
+                            logger.error("Field '{}' list element is not a valid number. Setting to null.", field);
+                            coinData.put(field, null);
+                        }
+                    } else {
+                        logger.error("Field '{}' list element is of unexpected type. Setting to null.", field);
                         coinData.put(field, null);
                     }
                 } else {
-                    logger.warn("Setting '{}' field to null due to invalid type: {}", field, value.getClass().getName());
+                    logger.warn("Field '{}' is an empty list. Setting to null.", field);
                     coinData.put(field, null);
                 }
+            } else {
+                if (value != null) {
+                    logger.warn("Field '{}' is of unexpected type '{}'. Setting to null.", field, value.getClass().getName());
+                }
+                coinData.put(field, null);
             }
         }
 
-        // Handle sparkline_in_7d field, ensure it's a List<Double>
+        // Handle 'sparkline_in_7d' field
         Object sparkline = coinData.get("sparkline_in_7d");
         if (sparkline instanceof Map) {
             Map<?, ?> sparklineMap = (Map<?, ?>) sparkline;
             Object priceList = sparklineMap.get("price");
             if (priceList instanceof List) {
                 coinData.put("sparkline_in_7d", priceList);
-                logger.debug("Parsed 'sparkline_in_7d' field from Map to List<Double>.");
             } else {
-                logger.warn("'sparkline_in_7d' field is not a List. Setting to null.");
                 coinData.put("sparkline_in_7d", null);
             }
         } else if (!(sparkline instanceof List)) {
-            logger.warn("'sparkline_in_7d' field is not a List. Setting to null.");
             coinData.put("sparkline_in_7d", null);
         }
 
-        // Additional field sanitization as needed
+        return coinData;
     }
 
     /**

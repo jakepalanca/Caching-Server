@@ -75,8 +75,6 @@ public class FetchCoinJob implements Job {
     }
 
     private Map<String, Object> sanitizeCoinData(Map<String, Object> coinData) {
-        // Similar sanitization logic as in DynamoDBClient
-        // Ensure numeric fields are numbers or null
         String[] numericFields = {
                 "current_price", "market_cap", "market_cap_rank", "fully_diluted_valuation",
                 "total_volume", "high_24h", "low_24h", "price_change_24h",
@@ -91,20 +89,49 @@ public class FetchCoinJob implements Job {
 
         for (String field : numericFields) {
             Object value = coinData.get(field);
-            if (!(value instanceof Number)) {
-                if (value instanceof String) {
-                    try {
-                        coinData.put(field, Double.parseDouble((String) value));
-                    } catch (NumberFormatException e) {
+            if (value instanceof Number) {
+                // Value is already a number; do nothing.
+            } else if (value instanceof String) {
+                try {
+                    coinData.put(field, Double.parseDouble((String) value));
+                    logger.debug("Parsed '{}' field from String to Double.", field);
+                } catch (NumberFormatException e) {
+                    logger.warn("Unable to parse '{}' field from String to Double. Setting to null.", field);
+                    coinData.put(field, null);
+                }
+            } else if (value instanceof List) {
+                // Attempt to extract a number from the list.
+                List<?> valueList = (List<?>) value;
+                if (!valueList.isEmpty()) {
+                    Object firstElement = valueList.get(0);
+                    if (firstElement instanceof Number) {
+                        coinData.put(field, ((Number) firstElement).doubleValue());
+                        logger.warn("Field '{}' was a list. Extracted number: {}", field, coinData.get(field));
+                    } else if (firstElement instanceof String) {
+                        try {
+                            coinData.put(field, Double.parseDouble((String) firstElement));
+                            logger.warn("Field '{}' was a list. Parsed number from string: {}", field, coinData.get(field));
+                        } catch (NumberFormatException e) {
+                            logger.error("Field '{}' list element is not a valid number. Setting to null.", field);
+                            coinData.put(field, null);
+                        }
+                    } else {
+                        logger.error("Field '{}' list element is of unexpected type. Setting to null.", field);
                         coinData.put(field, null);
                     }
                 } else {
+                    logger.warn("Field '{}' is an empty list. Setting to null.", field);
                     coinData.put(field, null);
                 }
+            } else {
+                if (value != null) {
+                    logger.warn("Field '{}' is of unexpected type '{}'. Setting to null.", field, value.getClass().getName());
+                }
+                coinData.put(field, null);
             }
         }
 
-        // Handle sparkline_in_7d field, ensure it's a List<Double>
+        // Handle 'sparkline_in_7d' field
         Object sparkline = coinData.get("sparkline_in_7d");
         if (sparkline instanceof Map) {
             Map<?, ?> sparklineMap = (Map<?, ?>) sparkline;
@@ -117,8 +144,6 @@ public class FetchCoinJob implements Job {
         } else if (!(sparkline instanceof List)) {
             coinData.put("sparkline_in_7d", null);
         }
-
-        // Additional field sanitization as needed
 
         return coinData;
     }
