@@ -16,7 +16,6 @@
   </properties>
 
   <dependencies>
-
     <!-- Common Models -->
     <dependency>
       <groupId>io.github.jakepalanca.common</groupId>
