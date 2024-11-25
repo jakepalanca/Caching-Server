@@ -188,13 +188,8 @@ public class DynamoDBClient implements AutoCloseable {
         } else if (!(sparkline instanceof List)) {
             coinData.put("sparkline_in_7d", null);
         }
-        // Set ALL_RANKS field
-        Object marketCapRank = coinData.get("market_cap_rank");
-        if (marketCapRank != null) {
-            coinData.put("ALL_RANKS", marketCapRank.toString());
-        } else {
-            coinData.put("ALL_RANKS", "N/A");
-        }
+        // Set ALL_RANKS field as constant so I can use ALL_RANKS partition key with a number sort
+        coinData.put("ALL_RANKS", "ALL_RANKS");
 
         return coinData;
     }
