@@ -53,7 +53,12 @@ public class MainApplication {
         }
 
         // Initialize a bounded thread-safe queue for inter-job communication
-        BlockingQueue<List<Map<String, Object>>> coinQueue = new ArrayBlockingQueue<>(10);
+        BlockingQueue<List<Map<String, Object>>> coinQueue = new ArrayBlockingQueue<>(1000);
+
+        int fetchInterval = getIntervalFromEnv("FETCH_COIN_INTERVAL_SECONDS", 300);
+        int updateInterval = getIntervalFromEnv("UPDATE_DYNAMODB_INTERVAL_SECONDS", 30);
+        logger.info("FETCH INTERVAL: {}", fetchInterval);
+        logger.info("UPDATE INTERVAL: {}", updateInterval);
 
         // Initialize Scheduler
         Scheduler scheduler = initializeScheduler();

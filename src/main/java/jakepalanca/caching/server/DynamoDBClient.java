@@ -188,6 +188,13 @@ public class DynamoDBClient implements AutoCloseable {
         } else if (!(sparkline instanceof List)) {
             coinData.put("sparkline_in_7d", null);
         }
+        // Set ALL_RANKS field
+        Object marketCapRank = coinData.get("market_cap_rank");
+        if (marketCapRank != null) {
+            coinData.put("ALL_RANKS", marketCapRank.toString());
+        } else {
+            coinData.put("ALL_RANKS", "N/A");
+        }
 
         return coinData;
     }
